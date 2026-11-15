@@ -1,0 +1,10 @@
+{
+  "title": "VeriWrite Multi-Level Integrity Verification Document",
+  "text": "Autonomous software verification requires rigorous evidence gathering rather than relying on fabricated statistical scores. Systems designed for integrity must openly disclose whenever external information is inaccessible or when algorithms encounter uncertainty.\n\nDigital transformation has become an important part of modern business strategy. Organizations increasingly use technology to improve operational efficiency, customer experience, and financial performance.\n\nModern enterprise strategy now considers digital transformation essential, as companies routinely apply technological tools to boost operational efficiency, client satisfaction, and financial performance.\n\nIntegrating computer systems and automated workflows allows commercial enterprises to optimize their daily operations and elevate their economic productivity.",
+  "expected": {
+    "paragraph1": "No source match (original content)",
+    "paragraph2": "Exact match against demo-source",
+    "paragraph3": "Near match (modified wording and substitutions)",
+    "paragraph4": "Semantic match (conceptual similarity)"
+  }
+}
