@@ -1760,7 +1760,15 @@ function renderAnalysisResults(analysis) {
   $("analysis-badge").style.background = analysis.status === "completed" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)";
   $("analysis-badge").style.color = analysis.status === "completed" ? "#34d399" : "#fbbf24";
 
-  $("status-message-banner").textContent = analysis.statusMessage || "Similarity analysis completed successfully.";
+  if (score === 0) {
+    if (analysis.statusMessage && analysis.statusMessage.includes("Web search unavailable")) {
+      $("status-message-banner").innerHTML = '<strong>Web search unavailable. Local similarity analysis completed.</strong> 0% similarity detected across verified matching evidence.';
+    } else {
+      $("status-message-banner").textContent = "0% similarity detected across verified matching evidence.";
+    }
+  } else {
+    $("status-message-banner").textContent = analysis.statusMessage || "Similarity analysis completed successfully.";
+  }
 
   $("m-sim").textContent = `${score}%`;
   $("m-exact").textContent = `${sim.coverage?.exactPercent ?? 0}%`;
@@ -1810,8 +1818,35 @@ function renderPassagesTab(analysis) {
   const passages = analysis.matchedPassages || [];
 
   if (!passages.length) {
-    $("highlighted-doc-box").innerHTML = '<div style="color:#34d399; font-weight:700;">No verified matching passages found. The submitted text shows no significant overlap with retrieved web sources.</div>';
-    $("evidence-panel").innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--bg-canvas); border-radius:12px;">No matching source evidence detected.</div>';
+    const isSearchUnavailable = analysis.statusMessage && analysis.statusMessage.includes("Web search unavailable");
+    const subNotice = isSearchUnavailable
+      ? '<div style="font-size:12px; color:var(--text-muted); margin-top:8px;">Web search unavailable. Local similarity analysis completed against reference corpus.</div>'
+      : '';
+    $("highlighted-doc-box").innerHTML = `
+      <div style="padding:16px; border-radius:8px; background:rgba(124,58,237,0.06); border:1px solid rgba(124,58,237,0.2);">
+        <div style="color:var(--text-primary); font-weight:700; font-size:14px;">0% similarity detected across verified matching evidence.</div>
+        <div style="color:var(--text-secondary); font-size:13px; margin-top:6px;">No verified matching passages found. The submitted text shows no significant overlap with evaluated sources.</div>
+        ${subNotice}
+      </div>
+      <div style="margin-top:16px; opacity:0.85; white-space:pre-wrap;">${escapeHtml(originalText)}</div>
+    `;
+    $("evidence-panel").innerHTML = `
+      <div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--bg-canvas); border-radius:12px;">
+        <div style="font-size:18px; font-weight:700; color:var(--text-primary); margin-bottom:8px;">0% Similarity Detected</div>
+        <p style="font-size:13px; margin-bottom:14px;">0% similarity detected across verified matching evidence.</p>
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; font-size:12px; color:var(--text-secondary); margin-top:12px;">
+          <span>Retrieved: <b>${analysis.sources?.retrievedCount ?? 0}</b></span>
+          <span>Topical: <b>${analysis.sources?.topicalCount ?? 0}</b></span>
+          <span>Possible: <b>${analysis.sources?.possibleCount ?? 0}</b></span>
+          <span>Verified: <b>${analysis.sources?.matchingCount ?? 0}</b></span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; font-size:12px; color:var(--text-secondary); margin-top:8px;">
+          <span>Exact: <b>${sim.coverage?.exactPercent ?? 0}%</b></span>
+          <span>Near: <b>${sim.coverage?.nearPercent ?? 0}%</b></span>
+          <span>Semantic: <b>${sim.coverage?.semanticPercent ?? 0}%</b></span>
+        </div>
+      </div>
+    `;
     return;
   }
 

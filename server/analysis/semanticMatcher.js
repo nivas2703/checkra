@@ -65,13 +65,18 @@ const SYNONYM_CANONICAL = {
   "explicit": "explicit_sem", "explicitly": "explicit_sem",
   "instruction": "program_sem", "instructions": "program_sem",
   "program": "program_sem", "programs": "program_sem", "programming": "program_sem", "programmed": "program_sem",
-  "computational": "comput_math_sem", "mathematical": "comput_math_sem",
-  "observation": "sample_data_sem", "observations": "sample_data_sem",
+  "computational": "comput_math_sem", "mathematical": "comput_math_sem", "statistical": "comput_math_sem",
+  "observation": "sample_data_sem", "observations": "sample_data_sem", "sample": "sample_data_sem", "samples": "sample_data_sem",
   "outcome": "decision_sem", "outcomes": "decision_sem",
   "decision": "decision_sem", "decisions": "decision_sem",
   "enterprises": "org_sem", "organizations": "org_sem", "enterprise": "org_sem", "organization": "org_sem",
   "optimize": "improve_sem", "improve": "improve_sem", "improves": "improve_sem", "optimizing": "improve_sem",
-  "operations": "operation_sem", "operational": "operation_sem", "operation": "operation_sem"
+  "operations": "operation_sem", "operational": "operation_sem", "operation": "operation_sem",
+  // Core distinctive paraphrase concepts
+  "pattern": "pattern_concept_sem", "patterns": "pattern_concept_sem",
+  "generate": "produce_make_sem", "generates": "produce_make_sem", "generating": "produce_make_sem",
+  "learn": "train_learn_sem", "learned": "train_learn_sem", "training": "train_learn_sem",
+  "dataset": "dataset_corpus_sem", "datasets": "dataset_corpus_sem"
 };
 
 function cosineSimilarity(vecA, vecB) {
@@ -123,9 +128,11 @@ function analyzeSentenceOverlap(textA, textB) {
   // Check synonym and concept correspondence for genuine paraphrases
   let sharedSynonyms = 0;
   contentA.forEach(w => {
+    // Exclude generic domain words from generating false distinctive synonyms
+    if (DOMAIN_GENERIC_WORDS.has(w) || STOPWORDS.has(w)) return;
     const canonA = SYNONYM_CANONICAL[w];
     if (canonA) {
-      const hasSyn = contentB.some(wb => SYNONYM_CANONICAL[wb] === canonA && wb !== w);
+      const hasSyn = contentB.some(wb => !DOMAIN_GENERIC_WORDS.has(wb) && !STOPWORDS.has(wb) && SYNONYM_CANONICAL[wb] === canonA && wb !== w);
       if (hasSyn) {
         sharedSynonyms++;
         distinctiveTerms.push(`${w}~syn`);

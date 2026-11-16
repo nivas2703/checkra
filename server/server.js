@@ -120,7 +120,7 @@ app.post("/api/extract", upload.single("file"), async (req, res) => {
 // POST /api/analyze — Execute decoupled 10-step integrity analysis
 app.post("/api/analyze", async (req, res) => {
   try {
-    const { text, title, filename, fileStats, options = {} } = req.body || {};
+    const { text, title, filename, fileStats, options = {}, referenceText, referenceTitle } = req.body || {};
     if (!text || text.trim().length < 20) {
       return res.status(400).json({
         success: false,
@@ -133,6 +133,8 @@ app.post("/api/analyze", async (req, res) => {
 
     const currentSettings = db.getSettings();
     const mergedOptions = { ...currentSettings, ...options };
+    if (referenceText) mergedOptions.referenceText = referenceText;
+    if (referenceTitle) mergedOptions.referenceTitle = referenceTitle;
 
     const result = await executeAnalysis({
       text,
@@ -460,7 +462,7 @@ app.get("*", (req, res) => {
 });
 
 const PORT = Number(process.env.PORT || 8787);
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Checkra running at http://localhost:${PORT}`);
   logger.info("Server started", { port: PORT, gemini: isGeminiConfigured() });
 });

@@ -1,9 +1,10 @@
 /**
- * VeriWrite Search Provider Abstraction
+ * Checkra Search Provider Abstraction
  * Supports:
  * 1. Gemini Google Search Grounding (if supported and configured)
- * 2. External Search APIs (SerpAPI, Serper, Bing, Google Custom Search, or custom JSON endpoint)
- * 3. Local Comparison Mode when no search provider is configured
+ * 2. External Search APIs (SearXNG, SerpAPI, Serper, Bing, Google Custom Search, or custom JSON endpoint)
+ * 3. Public Web Search Fallback (Wikipedia Open Search API)
+ * 4. Local Reference Comparison Mode when web search is unavailable
  *
  * Never fabricates web results.
  */
@@ -43,7 +44,7 @@ function generateSearchQueries(sentences = [], maxQueries = 8) {
   const filtered = sentences
     .map(s => (typeof s === "string" ? s : s.raw || ""))
     .map(s => s.trim().replace(/["']/g, ""))
-    .filter(s => s.length >= 35 && s.length <= 260);
+    .filter(s => s.length >= 25 && s.length <= 300);
 
   // Sort by informative length
   filtered.sort((a, b) => b.length - a.length);
@@ -53,6 +54,29 @@ function generateSearchQueries(sentences = [], maxQueries = 8) {
     // Take 8-14 distinctive words
     return sent.split(/\s+/).slice(0, 12).join(" ");
   });
+}
+
+/**
+ * Fast reachability check for localhost search endpoints to prevent 96-second timeout hanging on Render
+ */
+async function isLocalhostReachable(url, timeoutMs = 1500) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
+      return true; // External remote URL, proceed with normal execution
+    }
+    // Fast probe: /healthz responds in ~4ms when running, immediately ECONNREFUSED when offline
+    try {
+      const resHealth = await fetch(`${parsed.origin}/healthz`, { signal: AbortSignal.timeout(timeoutMs) });
+      if (resHealth.ok) return true;
+    } catch (e) {
+      // fallback to origin probe
+    }
+    const res = await fetch(`${parsed.origin}/`, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok || res.status === 404;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -84,6 +108,46 @@ async function searchWebWithSearXNG(query, apiUrl = "http://localhost:8080/searc
     url: item.url || "",
     snippet: item.content || item.snippet || "",
     engine: item.engine || "searxng",
+    isLocal: false
+  })).filter(x => x.url && x.url.startsWith("http"));
+}
+
+/**
+ * Public Web Search Fallback (Wikipedia Open Search API)
+ * Enables zero-config, production-safe public web search without requiring a local Docker container.
+ */
+async function searchWebWithWikipedia(query) {
+  if (!query || !query.trim()) return [];
+  const cleanQuery = query.replace(/[^\w\s]/g, " ").trim().split(/\s+/).slice(0, 8).join(" ");
+  if (!cleanQuery) return [];
+
+  const urlObj = new URL("https://en.wikipedia.org/w/api.php");
+  urlObj.searchParams.set("action", "query");
+  urlObj.searchParams.set("list", "search");
+  urlObj.searchParams.set("srsearch", cleanQuery);
+  urlObj.searchParams.set("utf8", "1");
+  urlObj.searchParams.set("format", "json");
+  urlObj.searchParams.set("origin", "*");
+
+  const res = await fetch(urlObj.toString(), {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "Mozilla/5.0 (compatible; Checkra/2.5.0; +https://checkra.local/bot)"
+    },
+    signal: AbortSignal.timeout(8000)
+  });
+
+  if (!res.ok) {
+    throw new Error(`Wikipedia search returned HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  const searchResults = data.query?.search || [];
+  return searchResults.map(item => ({
+    title: item.title ? `${item.title} — Wikipedia` : "Wikipedia Web Source",
+    url: `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, "_"))}`,
+    snippet: (item.snippet || "").replace(/<[^>]+>/g, ""),
+    engine: "wikipedia",
     isLocal: false
   })).filter(x => x.url && x.url.startsWith("http"));
 }
@@ -129,8 +193,9 @@ async function queryExternalSearchApi(query, apiUrl, apiKey, engine = "") {
  * Unified Candidate Source Discovery
  * Provider Priority:
  * 1. Gemini Web Grounding
- * 2. SearXNG
- * 3. Local Comparison Mode
+ * 2. SearXNG / Configured Search API
+ * 3. Public Web Search Fallback (Wikipedia Open Search)
+ * 4. Local Reference Comparison Mode
  */
 async function discoverCandidateSources(documentText, sentences = [], options = {}) {
   const searchApiUrl = options.searchApiUrl || process.env.SEARCH_API_URL;
@@ -169,61 +234,118 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
     }
   }
 
+  const candidates = [];
+  const seenUrls = new Set();
+  let searchFailed = false;
+
   // 2. Try SearXNG / External Search if configured
   if (searchApiUrl) {
     const isSearXNG = searchEngine.toLowerCase().includes("searx") || searchApiUrl.includes(":8080");
-    logger.logEvent("search_external_started", { queryCount: queries.length, engine: isSearXNG ? "SearXNG" : searchEngine });
-    const candidates = [];
-    const seenUrls = new Set();
-    let searchFailed = false;
+    const isLocalhost = searchApiUrl.includes("localhost") || searchApiUrl.includes("127.0.0.1");
 
-    for (const q of queries) {
-      try {
-        let items = [];
-        if (isSearXNG) {
-          items = await searchWebWithSearXNG(q, searchApiUrl);
-        } else {
-          items = await queryExternalSearchApi(q, searchApiUrl, searchApiKey, searchEngine);
-        }
-        for (const it of items) {
-          if (!seenUrls.has(it.url)) {
-            seenUrls.add(it.url);
-            candidates.push(it);
-          }
-          if (candidates.length >= maxSources) break;
-        }
-      } catch (err) {
+    let canAttemptExternal = true;
+    if (isLocalhost) {
+      const reachable = await isLocalhostReachable(searchApiUrl, 400);
+      if (!reachable) {
+        canAttemptExternal = false;
         searchFailed = true;
-        logger.warn("External search query failed", { query: q, error: err.message });
+        logger.warn("Local search endpoint unreachable on this host, skipping to production web search fallback", { url: searchApiUrl });
       }
-      if (candidates.length >= maxSources) break;
     }
 
-    if (candidates.length > 0 || !searchFailed) {
-      const modeLabel = isSearXNG ? "SearXNG Web Search" : "External Web Search";
-      let statusMsg = `Retrieved ${candidates.length} candidate source URLs via ${isSearXNG ? "SearXNG" : "configured external search"}.`;
-      if (geminiGroundingStatus === "QUOTA_EXHAUSTED" || geminiGroundingError) {
-        statusMsg = "Gemini Grounding unavailable — using SearXNG fallback.";
+    if (canAttemptExternal) {
+      logger.logEvent("search_external_started", { queryCount: queries.length, engine: isSearXNG ? "SearXNG" : searchEngine });
+
+      for (const q of queries) {
+        try {
+          let items = [];
+          if (isSearXNG) {
+            items = await searchWebWithSearXNG(q, searchApiUrl);
+          } else {
+            items = await queryExternalSearchApi(q, searchApiUrl, searchApiKey, searchEngine);
+          }
+          for (const it of items) {
+            if (!seenUrls.has(it.url)) {
+              seenUrls.add(it.url);
+              candidates.push(it);
+            }
+            if (candidates.length >= maxSources) break;
+          }
+        } catch (err) {
+          searchFailed = true;
+          logger.warn("External search query failed", { query: q, error: err.message });
+        }
+        if (candidates.length >= maxSources) break;
       }
-      return {
-        mode: "EXTERNAL_SEARCH",
-        modeLabel,
-        message: statusMsg,
-        groundingStatus: geminiGroundingStatus,
-        groundingError: geminiGroundingError,
-        queries,
-        sources: candidates
-      };
+
+      if (candidates.length > 0) {
+        const modeLabel = isSearXNG ? "SearXNG Web Search" : "External Web Search";
+        let statusMsg = `Retrieved ${candidates.length} candidate source URLs via ${isSearXNG ? "SearXNG" : "configured external search"}.`;
+        if (geminiGroundingStatus === "QUOTA_EXHAUSTED" || geminiGroundingError) {
+          statusMsg = "Gemini Grounding unavailable — using SearXNG fallback.";
+        }
+        return {
+          mode: "EXTERNAL_SEARCH",
+          modeLabel,
+          message: statusMsg,
+          groundingStatus: geminiGroundingStatus,
+          groundingError: geminiGroundingError,
+          queries,
+          sources: candidates
+        };
+      }
     }
   }
 
-  // 3. Fallback: Neither Gemini Grounding NOR External Search / SearXNG is available
+  // 2b. Public Web Search Fallback (Wikipedia Open Search)
+  // Provides production-ready public web search when NO external search URL is configured or when wikipedia search is requested
+  const isExplicitExternalSearchFailure = Boolean(searchApiUrl && searchFailed);
+  if (candidates.length === 0 && !isExplicitExternalSearchFailure && (options.disablePublicWebSearch !== true)) {
+    try {
+      logger.logEvent("public_web_search_started", { queryCount: queries.length, engine: "Wikipedia" });
+      for (const q of queries) {
+        try {
+          const wikiItems = await searchWebWithWikipedia(q);
+          for (const it of wikiItems) {
+            if (!seenUrls.has(it.url)) {
+              seenUrls.add(it.url);
+              candidates.push(it);
+            }
+            if (candidates.length >= maxSources) break;
+          }
+        } catch (e) {
+          // continue with remaining queries
+        }
+        if (candidates.length >= maxSources) break;
+      }
+
+      if (candidates.length > 0) {
+        let statusMsg = `Retrieved ${candidates.length} candidate source URLs via public web search.`;
+        if (geminiGroundingStatus === "QUOTA_EXHAUSTED" || geminiGroundingError) {
+          statusMsg = "Gemini Grounding unavailable — using public web search fallback.";
+        }
+        return {
+          mode: "EXTERNAL_SEARCH",
+          modeLabel: "Public Web Search",
+          message: statusMsg,
+          groundingStatus: geminiGroundingStatus,
+          groundingError: geminiGroundingError,
+          queries,
+          sources: candidates
+        };
+      }
+    } catch (wikiErr) {
+      logger.warn("Public web search fallback encountered error", { error: wikiErr.message });
+    }
+  }
+
+  // 3. Fallback: Neither Gemini Grounding, nor External Search, nor Public Search produced candidates
   logger.logEvent("search_mode_fallback", { mode: "local_comparison_mode" });
   const localSources = getLocalReferenceSources();
 
-  let fallbackMessage = "Web checking unavailable. Running local comparison against reference corpus.";
+  let fallbackMessage = "Web search unavailable. Local similarity analysis completed against reference corpus.";
   if (geminiGroundingStatus === "QUOTA_EXHAUSTED") {
-    fallbackMessage = "Web checking unavailable. Gemini web grounding is unavailable (API quota exhausted) and SearXNG is unavailable. Running local comparison against reference corpus.";
+    fallbackMessage = "Web search unavailable (Gemini quota exhausted and external search offline). Local similarity analysis completed against reference corpus.";
   }
 
   return {
@@ -242,5 +364,7 @@ module.exports = {
   discoverCandidateSources,
   getLocalReferenceSources,
   queryExternalSearchApi,
-  searchWebWithSearXNG
+  searchWebWithSearXNG,
+  searchWebWithWikipedia,
+  isLocalhostReachable
 };

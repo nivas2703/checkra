@@ -19,7 +19,7 @@ const { findExactMatches } = require("../analysis/exactMatcher");
 const { findNearMatches } = require("../analysis/nearMatcher");
 const { findSemanticMatches } = require("../analysis/semanticMatcher");
 const { calculateDocumentScore } = require("../analysis/scoring");
-const { discoverCandidateSources } = require("../providers/searchProvider");
+const { discoverCandidateSources, getLocalReferenceSources } = require("../providers/searchProvider");
 const { retrieveMultipleSources } = require("../providers/pageRetriever");
 const { classifySource } = require("../providers/sourceClassifier");
 const { reviewEvidenceWithAI } = require("../providers/aiReviewProvider");
@@ -93,6 +93,36 @@ async function executeAnalysis({
       stageStatuses.sourceRetrieval = "success";
     } else {
       stageStatuses.sourceRetrieval = "no_sources";
+      const localFallback = getLocalReferenceSources();
+      if (localFallback.length > 0) {
+        retrievedSources = localFallback.map(s => ({ ...s, status: "VERIFIED" }));
+        stageStatuses.sourceRetrieval = "local_fallback";
+      }
+    }
+
+    // If external retrieval returned 0 readable pages, augment with reference corpus
+    const hasReadable = retrievedSources.some(s => s.text && s.status !== "INACCESSIBLE");
+    if (!hasReadable) {
+      const localFallback = getLocalReferenceSources();
+      if (localFallback.length > 0) {
+        retrievedSources = [
+          ...retrievedSources,
+          ...localFallback.map(s => ({ ...s, status: "VERIFIED" }))
+        ];
+      }
+    }
+
+    // Support direct reference document comparison
+    if (options.referenceText && typeof options.referenceText === "string" && options.referenceText.trim().length > 20) {
+      retrievedSources.push({
+        title: options.referenceTitle || "Submitted Reference Document",
+        url: "local://submitted-reference",
+        snippet: options.referenceText.slice(0, 200),
+        text: options.referenceText,
+        sourceType: "Reference Document",
+        status: "VERIFIED",
+        isLocal: true
+      });
     }
   } catch (err) {
     logger.warn("Source retrieval batch error", { error: err.message });
@@ -373,7 +403,7 @@ async function executeAnalysis({
   const isLimited = (stageStatuses.webSearch !== "success" && stageStatuses.webSearch !== "local_fallback");
   const overallStatus = isLimited ? "completed_with_limitations" : "completed";
   const statusMessage = discovery.mode === "LOCAL_COMPARISON"
-    ? (discovery.message || "Local comparison completed. Web checking is unavailable.")
+    ? "Web search unavailable. Local similarity analysis completed."
     : isLimited
       ? "Analysis completed with limited services."
       : (discovery.message || "Complete analysis finished successfully.");
