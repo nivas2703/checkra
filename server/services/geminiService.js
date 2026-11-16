@@ -259,14 +259,17 @@ Respond ONLY with valid JSON in this exact structure:
       if (attempt > 1) {
         logger.info(`Retrying Gemini AI evidence review (attempt ${attempt}/${maxAttempts})...`);
       }
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.1
-        }
-      });
+      const response = await Promise.race([
+        ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.1
+          }
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("ETIMEDOUT: Gemini API call timed out after 20000ms")), 20000))
+      ]);
 
       const text = response.text || "{}";
       let parsed;

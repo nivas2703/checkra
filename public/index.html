@@ -1009,6 +1009,163 @@ header {
   .sources-matrix-grid { grid-template-columns: 1fr 1fr; }
   .side-by-side-grid { grid-template-columns: 1fr; }
   .nav-actions .btn.outline { display: none; }
+  .nivora-header-badge span { display: none; }
+  .nivora-header-badge { padding: 4px 6px; }
+  .footer-inner { flex-direction: column; text-align: center; justify-content: center; }
+  .footer-left { flex-wrap: wrap; justify-content: center; }
+}
+
+@media (max-width: 1100px) {
+  .tagline-badge { display: none; }
+}
+
+/* NIVORA Parent Brand Styling */
+.nivora-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 7px;
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 999px;
+  text-decoration: none;
+  color: #c4b5fd;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.nivora-header-badge:hover {
+  background: rgba(124, 58, 237, 0.18);
+  border-color: rgba(167, 139, 250, 0.5);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+.nivora-logo-icon {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 4px rgba(167, 139, 250, 0.4));
+}
+
+/* Global App Footer */
+.app-footer {
+  width: 100%;
+  margin-top: 40px;
+  padding: 24px 0;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(8, 8, 12, 0.6);
+  backdrop-filter: blur(8px);
+}
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.footer-brand {
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+.footer-dot {
+  color: var(--border-subtle);
+}
+.footer-right {
+  display: flex;
+  align-items: center;
+}
+.nivora-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 999px;
+  color: #c4b5fd;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nivora-footer-link:hover {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(167, 139, 250, 0.45);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+}
+.nivora-footer-logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+}
+.nivora-footer-arrow {
+  font-size: 11px;
+  color: #a78bfa;
+  transition: transform 0.2s;
+}
+.nivora-footer-link:hover .nivora-footer-arrow {
+  transform: translate(1px, -1px);
+}
+
+/* NIVORA Ecosystem Info Card */
+.nivora-ecosystem-card {
+  margin-top: 24px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(15, 15, 23, 0.6) 100%);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+}
+.nivora-ecosystem-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.nivora-eco-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.4));
+}
+.nivora-eco-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+.nivora-eco-tagline {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a78bfa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.nivora-eco-desc {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #a1a1aa;
+  margin-bottom: 16px;
+  max-width: 720px;
+}
+.nivora-eco-actions {
+  display: flex;
+  gap: 10px;
 }
 </style>
 </head>
@@ -1019,6 +1176,10 @@ header {
     <div class="brand-lockup">
       <img src="checkra-logo.png" alt="Checkra" class="logo-img">
       <span class="tagline-badge">Check • Verify • Improve</span>
+      <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="nivora-header-badge" title="Checkra — A NIVORA Product">
+        <img src="nivora-logo.png" alt="NIVORA" class="nivora-logo-icon">
+        <span>A NIVORA Product</span>
+      </a>
     </div>
     <nav class="nav-links">
       <a onclick="switchTab('workspace')" class="active" id="nav-workspace">Workspace</a>
@@ -1450,11 +1611,48 @@ header {
         <div class="checkra-alert info">
           <strong>Search Architecture Priority:</strong> Checkra executes Google Search Grounding when available, automatically falling back to self-hosted SearXNG metasearch, or offline Local Comparison Mode if external networks are inaccessible.
         </div>
+
+        <div class="nivora-ecosystem-card">
+          <div class="nivora-ecosystem-header">
+            <img src="nivora-logo.png" alt="NIVORA" class="nivora-eco-logo" />
+            <div>
+              <div class="nivora-eco-title">NIVORA Technology Universe</div>
+              <div class="nivora-eco-tagline">Parent Ecosystem & Innovation Suite</div>
+            </div>
+          </div>
+          <p class="nivora-eco-desc">
+            Checkra is engineered as an independent, high-precision writing integrity product within the <strong>NIVORA</strong> parent technology ecosystem. Checkra operates with an autonomous similarity engine and privacy-first session architecture while belonging to the broader NIVORA universe of intelligent tools.
+          </p>
+          <div class="nivora-eco-actions">
+            <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="btn outline sm">
+              Explore NIVORA Universe ↗
+            </a>
+          </div>
+        </div>
       </section>
 
     </main>
   </div>
 </div>
+
+<footer class="app-footer">
+  <div class="container footer-inner">
+    <div class="footer-left">
+      <span class="footer-brand">Checkra</span>
+      <span class="footer-dot">•</span>
+      <span class="footer-tagline">AI-Powered Writing & Integrity Checker</span>
+      <span class="footer-dot">•</span>
+      <span class="footer-copy">© 2026 Checkra</span>
+    </div>
+    <div class="footer-right">
+      <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="nivora-footer-link" title="Visit NIVORA Technology Universe">
+        <img src="nivora-logo.png" alt="NIVORA" class="nivora-footer-logo">
+        <span class="nivora-footer-text">A NIVORA Product</span>
+        <span class="nivora-footer-arrow">↗</span>
+      </a>
+    </div>
+  </div>
+</footer>
 
 <script>
 // Centralized API Client

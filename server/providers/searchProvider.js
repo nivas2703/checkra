@@ -256,6 +256,7 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
     if (canAttemptExternal) {
       logger.logEvent("search_external_started", { queryCount: queries.length, engine: isSearXNG ? "SearXNG" : searchEngine });
 
+      const perQueryLimit = Math.max(4, Math.ceil(maxSources / Math.max(1, queries.length)));
       for (const q of queries) {
         try {
           let items = [];
@@ -264,12 +265,14 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
           } else {
             items = await queryExternalSearchApi(q, searchApiUrl, searchApiKey, searchEngine);
           }
+          let queryAdded = 0;
           for (const it of items) {
             if (!seenUrls.has(it.url)) {
               seenUrls.add(it.url);
               candidates.push(it);
+              queryAdded++;
             }
-            if (candidates.length >= maxSources) break;
+            if (queryAdded >= perQueryLimit || candidates.length >= maxSources) break;
           }
         } catch (err) {
           searchFailed = true;
@@ -303,15 +306,18 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
   if (candidates.length === 0 && !isExplicitExternalSearchFailure && (options.disablePublicWebSearch !== true)) {
     try {
       logger.logEvent("public_web_search_started", { queryCount: queries.length, engine: "Wikipedia" });
+      const perQueryLimit = Math.max(4, Math.ceil(maxSources / Math.max(1, queries.length)));
       for (const q of queries) {
         try {
           const wikiItems = await searchWebWithWikipedia(q);
+          let queryAdded = 0;
           for (const it of wikiItems) {
             if (!seenUrls.has(it.url)) {
               seenUrls.add(it.url);
               candidates.push(it);
+              queryAdded++;
             }
-            if (candidates.length >= maxSources) break;
+            if (queryAdded >= perQueryLimit || candidates.length >= maxSources) break;
           }
         } catch (e) {
           // continue with remaining queries
