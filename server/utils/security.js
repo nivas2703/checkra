@@ -49,6 +49,7 @@ function sanitizeHtml(html = "") {
     .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
     .replace(/<header[\s\S]*?<\/header>/gi, " ")
     .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    .replace(/<sup[\s\S]*?<\/sup>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")

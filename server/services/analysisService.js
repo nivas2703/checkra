@@ -111,7 +111,7 @@ async function executeAnalysis({
       retrievedSources = discovery.sources.map(s => ({ ...s, status: "VERIFIED" }));
       stageStatuses.sourceRetrieval = "local";
     } else if (discovery.sources.length > 0) {
-      retrievedSources = await retrieveMultipleSources(discovery.sources, 3, 3000);
+      retrievedSources = await retrieveMultipleSources(discovery.sources, 4, 3200);
       stageStatuses.sourceRetrieval = "success";
       if (localRefSources.length > 0) {
         retrievedSources.push(...localRefSources);
@@ -124,16 +124,13 @@ async function executeAnalysis({
       }
     }
 
-    // Fallback if zero readable pages were retrieved
+    // Fallback if zero readable external pages were retrieved
     const hasReadable = retrievedSources.some(s => s.text && s.status === "VERIFIED");
-    if (!hasReadable) {
-      const localFallback = getLocalReferenceSources();
-      if (localFallback.length > 0) {
-        retrievedSources = [
-          ...retrievedSources,
-          ...localFallback.map(s => ({ ...s, status: "VERIFIED" }))
-        ];
-      }
+    if (!hasReadable && localRefSources.length > 0) {
+      retrievedSources = [
+        ...retrievedSources,
+        ...localRefSources
+      ];
     }
 
     // Direct reference document comparison if supplied in request
@@ -399,7 +396,7 @@ async function executeAnalysis({
 
   // Populate topical sources for retrieved candidate pages that do not have derivation matches
   for (const src of retrievedSources) {
-    if (src.text && src.status === "VERIFIED") {
+    if (src.text && src.status === "VERIFIED" && !src.isLocal) {
       const isVerified = sourceEvidences.some(s => s.url === src.url);
       const isPossible = possibleSources.some(s => s.url === src.url);
       const isTopical = topicalSources.some(s => s.url === src.url);
@@ -574,10 +571,24 @@ async function executeAnalysis({
 
   onProgress({ step: 10, label: "Step 10 — Report ready", percent: 100 });
 
-  db.setSessionAnalysis(analysisRecord);
-
   tReport = Date.now() - tRep0;
   const tTotal = Date.now() - tTotalStart;
+
+  analysisRecord.timings = {
+    extraction: tExtraction,
+    preprocessing: tPreprocess,
+    search: tSearch,
+    sourceRetrieval: tSourceRetrieval,
+    exactMatching: tExact,
+    nearMatching: tNear,
+    semanticMatching: tSemantic,
+    scoring: tScoring,
+    geminiReview: tGemini,
+    report: tReport,
+    total: tTotal
+  };
+
+  db.setSessionAnalysis(analysisRecord);
 
   // Lightweight server-side stage timing instrumentation (Step 9)
   console.log(`[Checkra] extraction: ${tExtraction} ms`);

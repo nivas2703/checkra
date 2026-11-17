@@ -44,15 +44,27 @@ function generateSearchQueries(sentences = [], maxQueries = 4) {
   const filtered = sentences
     .map(s => (typeof s === "string" ? s : s.raw || ""))
     .map(s => s.trim().replace(/["']/g, ""))
-    .filter(s => s.length >= 25 && s.length <= 300);
+    .filter(s => s.length >= 25 && s.length <= 400);
 
-  // Sort by informative length
-  filtered.sort((a, b) => b.length - a.length);
+  if (filtered.length === 0) return [];
 
-  const selected = filtered.slice(0, maxQueries);
+  // Sample across the document: always include lead sentence, then sample evenly
+  const selected = [];
+  if (filtered.length <= maxQueries) {
+    selected.push(...filtered);
+  } else {
+    selected.push(filtered[0]);
+    const step = (filtered.length - 1) / (maxQueries - 1);
+    for (let i = 1; i < maxQueries; i++) {
+      const idx = Math.min(filtered.length - 1, Math.round(i * step));
+      if (!selected.includes(filtered[idx])) {
+        selected.push(filtered[idx]);
+      }
+    }
+  }
+
   return selected.map(sent => {
-    // Take 8-14 distinctive words
-    return sent.split(/\s+/).slice(0, 12).join(" ");
+    return sent.split(/\s+/).slice(0, 14).join(" ");
   });
 }
 
@@ -113,43 +125,114 @@ async function searchWebWithSearXNG(query, apiUrl = "http://localhost:8080/searc
 }
 
 /**
- * Public Web Search Fallback (Wikipedia Open Search API)
+ * Public Web Search Fallback (Wikipedia Open Search & Query Search)
  * Enables zero-config, production-safe public web search without requiring a local Docker container.
  */
 async function searchWebWithWikipedia(query) {
   if (!query || !query.trim()) return [];
-  const cleanQuery = query.replace(/[^\w\s]/g, " ").trim().split(/\s+/).slice(0, 8).join(" ");
-  if (!cleanQuery) return [];
 
-  const urlObj = new URL("https://en.wikipedia.org/w/api.php");
-  urlObj.searchParams.set("action", "query");
-  urlObj.searchParams.set("list", "search");
-  urlObj.searchParams.set("srsearch", cleanQuery);
-  urlObj.searchParams.set("utf8", "1");
-  urlObj.searchParams.set("format", "json");
-  urlObj.searchParams.set("origin", "*");
+  const words = query.replace(/[^\w\s]/g, " ").trim().split(/\s+/).filter(w => w.length > 0);
+  if (words.length === 0) return [];
 
-  const res = await fetch(urlObj.toString(), {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "Mozilla/5.0 (compatible; Checkra/2.5.0; +https://checkra.local/bot)"
-    },
-    signal: AbortSignal.timeout(2000)
-  });
+  // Filter noise words for targeted entity and topical matching
+  const QUERY_NOISE = new Set([
+    "the", "this", "that", "these", "those", "in", "on", "at", "to", "for", "from",
+    "by", "with", "about", "into", "through", "during", "before", "after", "is", "are",
+    "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did",
+    "can", "could", "should", "would", "may", "might", "must", "and", "or", "but", "so",
+    "also", "sometimes", "called", "known", "named", "often", "usually"
+  ]);
+  const cleanWords = words.filter(w => !QUERY_NOISE.has(w.toLowerCase()));
 
-  if (!res.ok) {
-    throw new Error(`Wikipedia search returned HTTP ${res.status}`);
+  const topicQuery = (cleanWords.length > 0 ? cleanWords : words).slice(0, 3).join(" ");
+  const fullQuery = (cleanWords.length > 0 ? cleanWords : words).slice(0, 7).join(" ");
+
+  const results = [];
+  const seenUrls = new Set();
+
+  // 1. Entity/Topic Prefix Search via Wikipedia Opensearch (fast, high precision)
+  if (topicQuery) {
+    try {
+      const osUrl = new URL("https://en.wikipedia.org/w/api.php");
+      osUrl.searchParams.set("action", "opensearch");
+      osUrl.searchParams.set("search", topicQuery);
+      osUrl.searchParams.set("limit", "5");
+      osUrl.searchParams.set("namespace", "0");
+      osUrl.searchParams.set("format", "json");
+
+      const resOs = await fetch(osUrl.toString(), {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Mozilla/5.0 (compatible; Checkra/2.5.0; +https://checkra.local/bot)"
+        },
+        signal: AbortSignal.timeout(1500)
+      });
+
+      if (resOs.ok) {
+        const dataOs = await resOs.json();
+        const titles = dataOs[1] || [];
+        const snippets = dataOs[2] || [];
+        const urls = dataOs[3] || [];
+        for (let i = 0; i < urls.length; i++) {
+          if (urls[i] && !seenUrls.has(urls[i])) {
+            seenUrls.add(urls[i]);
+            results.push({
+              title: titles[i] ? `${titles[i]} — Wikipedia` : "Wikipedia Web Source",
+              url: urls[i],
+              snippet: snippets[i] || "",
+              engine: "wikipedia",
+              isLocal: false
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Opensearch probe non-fatal
+    }
   }
 
-  const data = await res.json();
-  const searchResults = data.query?.search || [];
-  return searchResults.map(item => ({
-    title: item.title ? `${item.title} — Wikipedia` : "Wikipedia Web Source",
-    url: `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, "_"))}`,
-    snippet: (item.snippet || "").replace(/<[^>]+>/g, ""),
-    engine: "wikipedia",
-    isLocal: false
-  })).filter(x => x.url && x.url.startsWith("http"));
+  // 2. Full-text search via Wikipedia Query Search (broader article discovery)
+  if (fullQuery) {
+    try {
+      const urlObj = new URL("https://en.wikipedia.org/w/api.php");
+      urlObj.searchParams.set("action", "query");
+      urlObj.searchParams.set("list", "search");
+      urlObj.searchParams.set("srsearch", fullQuery);
+      urlObj.searchParams.set("utf8", "1");
+      urlObj.searchParams.set("format", "json");
+      urlObj.searchParams.set("origin", "*");
+
+      const res = await fetch(urlObj.toString(), {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Mozilla/5.0 (compatible; Checkra/2.5.0; +https://checkra.local/bot)"
+        },
+        signal: AbortSignal.timeout(1800)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const searchResults = data.query?.search || [];
+        for (const item of searchResults) {
+          const u = `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, "_"))}`;
+          if (u && !seenUrls.has(u)) {
+            seenUrls.add(u);
+            results.push({
+              title: item.title ? `${item.title} — Wikipedia` : "Wikipedia Web Source",
+              url: u,
+              snippet: (item.snippet || "").replace(/<[^>]+>/g, ""),
+              engine: "wikipedia",
+              isLocal: false
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Search non-fatal
+    }
+  }
+
+  return results;
 }
 
 /**
@@ -217,17 +300,26 @@ async function executeQueriesWithBudget(queries, searchFn, maxSources, budgetMs 
   ]);
 
   if (Array.isArray(raceResult)) {
-    for (const res of raceResult) {
-      if (res.status === "fulfilled" && Array.isArray(res.value)) {
-        let added = 0;
-        for (const it of res.value) {
-          if (!seenUrls.has(it.url)) {
+    const queryResults = raceResult
+      .filter(r => r.status === "fulfilled" && Array.isArray(r.value))
+      .map(r => r.value);
+
+    let maxDepth = 0;
+    queryResults.forEach(arr => {
+      if (arr.length > maxDepth) maxDepth = arr.length;
+    });
+
+    // Round-robin interleave results so every query gets represented in candidate pool
+    for (let depth = 0; depth < maxDepth; depth++) {
+      for (const list of queryResults) {
+        if (depth < list.length) {
+          const it = list[depth];
+          if (it && it.url && !seenUrls.has(it.url)) {
             seenUrls.add(it.url);
             candidates.push(it);
-            added++;
           }
-          if (added >= perQueryLimit || candidates.length >= maxSources) break;
         }
+        if (candidates.length >= maxSources) break;
       }
       if (candidates.length >= maxSources) break;
     }

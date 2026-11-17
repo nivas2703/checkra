@@ -25,7 +25,9 @@ function normalizeExactText(text) {
  * Converts text into normalized token array
  */
 function toExactTokens(input) {
-  if (Array.isArray(input)) return input.map(t => String(t).toLowerCase());
+  if (Array.isArray(input)) {
+    return input.flatMap(t => normalizeExactText(String(t)).split(/\s+/)).filter(t => t.length > 0);
+  }
   if (typeof input === "string") {
     return normalizeExactText(input).split(/\s+/).filter(t => t.length > 0);
   }

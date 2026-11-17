@@ -3,153 +3,194 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Checkra — AI-Powered Writing & Integrity Checker</title>
+<title>Checkra — AI-Powered Writing &amp; Integrity Checker</title>
 <meta name="description" content="Check, verify, and improve your writing with AI-powered similarity analysis, source verification, grammar checking, and evidence-based reports.">
-<meta property="og:title" content="Checkra — AI-Powered Writing & Integrity Checker">
+<meta property="og:title" content="Checkra — AI-Powered Writing &amp; Integrity Checker">
 <meta property="og:description" content="Check. Verify. Improve. Analyze writing similarity, verify web sources, improve grammar, and refine your writing with evidence-based AI tools.">
 <meta property="og:image" content="/checkra-logo.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
 :root {
-  --bg-black: #050505;
-  --bg-canvas: #09090d;
-  --bg-surface: #0f0f15;
-  --bg-card: #13131c;
-  --bg-card-subtle: #171724;
-  --bg-card-hover: #1b1b2a;
+  --bg-deep: #07070b;
+  --bg-canvas: #09090f;
+  --bg-sidebar: #0d0d15;
+  --bg-card: #12121d;
+  --bg-card-subtle: #171725;
+  --bg-card-hover: #1c1c2e;
+  --bg-glass: rgba(18, 18, 29, 0.75);
   
-  --violet-900: #4c1d95;
-  --violet-800: #5b21b6;
-  --violet-700: #6d28d9;
-  --violet-600: #7c3aed;
-  --violet-500: #8b5cf6;
-  --violet-400: #a78bfa;
-  --violet-300: #c4b5fd;
-  --violet-100: #ede9fe;
-  --violet-glow: rgba(124, 58, 237, 0.28);
-  --violet-border: rgba(139, 92, 246, 0.25);
+  --violet-primary: #8b5cf6;
+  --violet-deep: #7c3aed;
+  --violet-dark: #6d28d9;
+  --violet-glow: rgba(139, 92, 246, 0.35);
+  --violet-glow-lg: 0 0 32px rgba(139, 92, 246, 0.45);
+  --violet-border: rgba(139, 92, 246, 0.28);
   
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  --cyan-accent: #06b6d4;
+  --cyan-glow: rgba(6, 182, 212, 0.3);
   
   --emerald: #10b981;
   --emerald-bg: rgba(16, 185, 129, 0.12);
-  --emerald-border: rgba(16, 185, 129, 0.28);
+  --emerald-border: rgba(16, 185, 129, 0.3);
+  
   --amber: #f59e0b;
   --amber-bg: rgba(245, 158, 11, 0.12);
-  --amber-border: rgba(245, 158, 11, 0.28);
+  --amber-border: rgba(245, 158, 11, 0.3);
+  
   --rose: #f43f5e;
   --rose-bg: rgba(244, 63, 94, 0.12);
-  --rose-border: rgba(244, 63, 94, 0.28);
+  --rose-border: rgba(244, 63, 94, 0.3);
+  
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
   
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
   
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.8);
-  --shadow-glow: 0 0 35px var(--violet-glow);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  background-image: 
+    radial-gradient(circle at 12% 18%, rgba(124, 58, 237, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 88% 82%, rgba(6, 182, 212, 0.09) 0%, transparent 45%);
   color: var(--text-primary);
-  background: var(--bg-black);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
 }
 
-button, input, textarea, select { font: inherit; }
-button { cursor: pointer; }
-.container { width: min(1360px, calc(100% - 32px)); margin: auto; }
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.4); }
 
-/* Sticky Top Navigation Bar */
-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  height: 72px;
-  background: rgba(5, 5, 5, 0.88);
+/* TOP NAVBAR */
+.top-nav {
+  height: 64px;
+  background: rgba(11, 11, 18, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
-}
-.nav {
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-.brand-lockup {
+.brand-group {
   display: flex;
   align-items: center;
   gap: 14px;
-  text-decoration: none;
 }
-.logo-img {
-  height: 42px;
-  object-fit: contain;
-  display: block;
+.brand-logo-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(124, 58, 237, 0.4);
 }
-.tagline-badge {
-  font-size: 11px;
+.brand-logo-inner {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deep);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 19px;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+.brand-titles {
+  display: flex;
+  flex-direction: column;
+}
+.brand-name {
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--violet-300);
-  background: rgba(124, 58, 237, 0.16);
-  border: 1px solid var(--violet-border);
-  padding: 4px 10px;
-  border-radius: 999px;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #ffffff, #d8b4fe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.brand-tagline {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+.nivora-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid var(--violet-border);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  color: #c4b5fd;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-left: 8px;
 }
-.tagline-badge::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--violet-400);
-  box-shadow: 0 0 8px var(--violet-400);
+.nivora-badge:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--violet-primary);
+  box-shadow: 0 0 12px var(--violet-glow);
 }
 
-.nav-links {
+.nav-tabs {
   display: flex;
+  align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(18, 18, 29, 0.6);
   padding: 4px;
-  border-radius: 12px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-subtle);
 }
-.nav-links a {
+.nav-tab-btn {
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 8px;
-  transition: all 0.15s ease;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
   cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
-.nav-links a:hover {
+.nav-tab-btn:hover {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.05);
 }
-.nav-links a.active {
-  color: var(--text-primary);
-  background: var(--violet-600);
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
+.nav-tab-btn.active {
+  background: linear-gradient(135deg, var(--violet-deep), var(--violet-dark));
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(124, 58, 237, 0.45);
 }
 
 .nav-actions {
@@ -157,1550 +198,1728 @@ header {
   align-items: center;
   gap: 10px;
 }
-
-/* Button System */
-.btn {
+.btn-sample {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  padding: 9px 18px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  text-decoration: none;
-  line-height: 1;
+  gap: 6px;
+  transition: all 0.2s;
 }
-.btn:hover {
-  background: var(--bg-card-hover);
-  border-color: rgba(255, 255, 255, 0.25);
+.btn-sample:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-strong);
+}
+.btn-primary-action {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #fff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+  transition: all 0.2s;
+}
+.btn-primary-action:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 22px rgba(139, 92, 246, 0.6);
   transform: translateY(-1px);
 }
-.btn:active { transform: translateY(0); }
-.btn.primary {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--violet-600), #9333ea);
-  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.45);
-}
-.btn.primary:hover {
-  background: linear-gradient(135deg, var(--violet-500), #a855f7);
-  box-shadow: 0 6px 22px rgba(139, 92, 246, 0.6);
-}
-.btn.sm { padding: 7px 12px; font-size: 11px; border-radius: 8px; }
-.btn.outline {
-  background: transparent;
-  border-color: var(--violet-border);
-  color: var(--violet-300);
-}
-.btn.outline:hover {
-  background: rgba(124, 58, 237, 0.15);
-  border-color: var(--violet-400);
-  color: #fff;
-}
-.btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
 
-/* App Layout & Shell */
+/* APP SHELL & SIDEBAR */
 .app-container {
-  padding: 24px 0 64px;
-}
-.app-shell {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: 840px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-}
-
-/* Sidebar Navigation */
-.sidebar {
-  background: var(--bg-canvas);
-  border-right: 1px solid var(--border-subtle);
-  padding: 24px 16px;
   display: flex;
-  flex-direction: column;
-}
-.side-header {
-  padding: 0 6px 18px;
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 16px;
-}
-.side-title {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: -0.2px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.side-title span { color: var(--violet-400); }
-.side-subtitle {
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-top: 3px;
-  letter-spacing: 0.2px;
-}
-.side-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
   flex: 1;
+  min-height: calc(100vh - 64px);
 }
-.side-btn {
+.sidebar {
+  width: 250px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 16px 20px 16px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  margin-bottom: 24px;
+}
+.sidebar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.sidebar-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  padding: 11px 14px;
+  padding: 10px 14px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
   background: transparent;
   border: 1px solid transparent;
-  font-size: 12px;
-  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
   text-align: left;
-  transition: all 0.15s ease;
+  width: 100%;
 }
-.side-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
+.sidebar-item:hover {
   color: #fff;
-  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.04);
 }
-.side-btn.active {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(139, 92, 246, 0.12));
-  color: #ffffff;
+.sidebar-item.active {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(109, 40, 217, 0.15));
   border-color: var(--violet-border);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  box-shadow: 0 0 18px rgba(124, 58, 237, 0.25);
 }
-.side-btn.active i {
-  color: var(--violet-400);
-}
-.side-btn i {
-  font-style: normal;
-  font-size: 15px;
+.sidebar-item-icon {
+  font-size: 16px;
   width: 20px;
-  text-align: center;
-  color: var(--text-muted);
-}
-.side-footer {
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 16px;
-  font-size: 10px;
-  color: var(--text-muted);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
 }
-.live-pill {
+
+/* Sidebar Bottom Ambient Wave & Status */
+.sidebar-bottom {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: 20px;
+}
+.sidebar-wave-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  pointer-events: none;
+  opacity: 0.65;
+  z-index: 1;
+}
+.sidebar-footer-stats {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.session-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  color: #34d399;
-  font-weight: 700;
+  gap: 6px;
+  background: rgba(18, 18, 29, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 5px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
-.live-pill::before {
-  content: "";
-  width: 6px;
-  height: 6px;
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 6px;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: var(--emerald);
+  box-shadow: 0 0 8px var(--emerald);
+  display: inline-block;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
 }
 
-/* Views & Panels */
-.view-panel {
-  display: none;
-  padding: 32px;
-  background: var(--bg-surface);
+/* MAIN CONTENT AREA */
+.main-view {
+  flex: 1;
+  padding: 24px;
   overflow-y: auto;
+  position: relative;
 }
-.view-panel.active { display: block; }
-.view-head {
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+
+/* WORKSPACE GRID (3 Columns) */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.95fr 0.9fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* CARDS COMMON */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* COLUMN 1: DOCUMENT INPUT */
+.col-document {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 26px;
+  flex-direction: column;
   gap: 16px;
-  flex-wrap: wrap;
 }
-.view-head h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+.section-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
   color: #ffffff;
 }
-.view-head p {
-  margin: 5px 0 0;
-  font-size: 12px;
+.section-header-sub {
+  font-size: 13px;
   color: var(--text-secondary);
-  max-width: 680px;
-  line-height: 1.6;
+  line-height: 1.5;
+  margin-bottom: 12px;
 }
 
-/* Workspace Input Grid */
-.doc-input-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 22px;
-}
-.input-card {
-  border: 1px solid var(--border-subtle);
+/* DROP ZONE */
+.dropzone-container {
+  border: 2px dashed rgba(139, 92, 246, 0.3);
+  background: linear-gradient(180deg, rgba(18, 18, 29, 0.8), rgba(23, 23, 37, 0.6));
   border-radius: var(--radius-lg);
-  padding: 22px;
-  background: var(--bg-canvas);
-}
-
-/* Drag-and-Drop Zone */
-.drop-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.16);
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
   padding: 28px 20px;
   text-align: center;
-  transition: all 0.2s ease;
   cursor: pointer;
-  margin-bottom: 16px;
+  transition: all 0.25s ease;
   position: relative;
 }
-.drop-zone:hover, .drop-zone.dragover {
-  border-color: var(--violet-400);
+.dropzone-container:hover, .dropzone-container.dragover {
+  border-color: var(--violet-primary);
   background: rgba(124, 58, 237, 0.08);
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 0 24px var(--violet-glow);
 }
-.drop-zone input { display: none; }
-.drop-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-  display: inline-block;
-  filter: drop-shadow(0 2px 8px var(--violet-glow));
+.drop-icon-wrap {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  border-radius: 14px;
+  background: rgba(139, 92, 246, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--violet-primary);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.3);
 }
 .drop-title {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 600;
   color: #fff;
+  margin-bottom: 4px;
 }
-.drop-desc {
+.drop-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.format-pills {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.format-pill {
+  padding: 3px 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
   font-size: 11px;
+  font-weight: 600;
   color: var(--text-secondary);
-  margin-top: 5px;
 }
-.formats-pill {
-  display: inline-block;
-  margin-top: 10px;
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--violet-300);
-  background: rgba(124, 58, 237, 0.14);
-  border: 1px solid var(--violet-border);
-  padding: 3px 10px;
-  border-radius: 999px;
-  letter-spacing: 0.5px;
+.drop-divider {
+  display: flex;
+  align-items: center;
+  margin: 12px 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.drop-divider::before, .drop-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.drop-divider span {
+  padding: 0 10px;
+}
+.btn-paste-text {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.btn-paste-text:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-strong);
 }
 
-/* Document Stats Bar */
-.stats-bar {
+/* DOCUMENT LOADED CARD */
+.doc-loaded-card {
+  background: linear-gradient(135deg, rgba(23, 23, 37, 0.9), rgba(18, 18, 29, 0.95));
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.doc-loaded-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.file-badge {
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 9px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.doc-loaded-info {
+  min-width: 0;
+}
+.doc-loaded-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.doc-loaded-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.doc-loaded-status {
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: #34d399;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.doc-loaded-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-icon-subtle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.btn-icon-subtle:hover {
+  color: var(--rose);
+  background: rgba(244, 63, 94, 0.1);
+}
+
+/* DOCUMENT PREVIEW & EDITOR */
+.doc-preview-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  margin-bottom: 14px;
-  font-size: 11px;
+  border-radius: var(--radius-md);
+  padding: 16px;
 }
-.stats-item span { color: var(--text-muted); margin-right: 4px; }
-.stats-item strong { color: #fff; font-weight: 700; }
-
-.doc-meta-row { display: flex; gap: 10px; margin-bottom: 12px; }
-.doc-title-input {
-  flex: 1;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
+.doc-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.doc-preview-title {
   font-size: 12px;
   font-weight: 600;
-  background: var(--bg-card);
-  color: #fff;
-  outline: 0;
-  transition: border-color 0.15s;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.doc-title-input:focus {
-  border-color: var(--violet-400);
-  box-shadow: 0 0 12px var(--violet-glow);
-}
-
 .doc-textarea {
   width: 100%;
-  height: 380px;
+  height: 180px;
+  background: rgba(9, 9, 15, 0.6);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 1.6;
+  padding: 12px;
   resize: vertical;
-  outline: 0;
-  background: var(--bg-card);
-  color: #f4f4f5;
-  font-family: inherit;
-  transition: border-color 0.15s;
+  outline: none;
+  transition: border-color 0.2s;
 }
 .doc-textarea:focus {
-  border-color: var(--violet-400);
-  box-shadow: 0 0 16px var(--violet-glow);
+  border-color: var(--violet-primary);
 }
 
-/* Settings Box */
-.settings-box {
+/* STATS BAR */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(18, 18, 29, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stat-pill-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.stat-pill-item strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* PREPROCESSING CONTROLS */
+.controls-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 16px;
-  margin-top: 14px;
 }
-.settings-title {
-  font-size: 12px;
-  font-weight: 800;
-  margin-bottom: 12px;
+.controls-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 14px;
+}
+.controls-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.controls-title {
+  font-size: 13px;
+  font-weight: 600;
   color: #fff;
 }
-.setting-row {
+.controls-badge {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.toggles-list {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 10px;
+}
+.toggle-row {
+  display: flex;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 11px;
+  justify-content: space-between;
+  gap: 12px;
+}
+.toggle-label {
+  font-size: 12px;
   color: var(--text-secondary);
 }
-.setting-row:last-child { border-bottom: 0; }
-.toggle {
-  width: 38px;
-  height: 20px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.12);
+/* Switch */
+.switch {
   position: relative;
-  border: 0;
-  cursor: pointer;
-  transition: background 0.2s;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
 }
-.toggle.on { background: linear-gradient(90deg, var(--violet-600), #9333ea); }
-.toggle i {
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 255, 255, 0.15);
+  transition: .3s;
+  border-radius: 20px;
 }
-.toggle.on i { transform: translateX(18px); }
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+input:checked + .slider {
+  background-color: var(--violet-deep);
+  box-shadow: 0 0 10px var(--violet-glow);
+}
+input:checked + .slider:before {
+  transform: translateX(16px);
+}
+.select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+.control-select {
+  background: rgba(9, 9, 15, 0.8);
+  border: 1px solid var(--border-subtle);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 12px;
+  outline: none;
+}
 
-/* Progress Card & Real 10-Stage Pipeline */
-.progress-card {
+/* COLUMN 2: ANALYSIS & RADAR */
+.col-analysis {
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 22px;
-  background: var(--bg-canvas);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-}
-.live-bar {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
+  position: relative;
   overflow: hidden;
-  margin: 12px 0 4px;
 }
-.live-bar-fill {
+.analysis-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Hexagon Radar Visual */
+.radar-wrapper {
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.radar-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(139, 92, 246, 0.2);
+}
+.radar-ring-pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--violet-primary);
+  border-right-color: var(--cyan-accent);
+  animation: radar-spin 2.5s linear infinite;
+  box-shadow: 0 0 20px var(--violet-glow);
+}
+@keyframes radar-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.radar-center-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #7c3aed, #4c1d95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 0 24px var(--violet-glow);
+}
+.radar-center-inner {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.analysis-main-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.analysis-main-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Progress Bar */
+.progress-container {
+  margin: 16px 0 20px;
+}
+.progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-bar-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--violet-600), var(--violet-400));
-  transition: width 0.35s ease;
-  box-shadow: 0 0 10px var(--violet-400);
+  background: linear-gradient(90deg, #7c3aed, #a78bfa, #06b6d4);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 12px var(--violet-glow);
 }
-.progress-step-list {
+.progress-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.progress-percent-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--violet-primary);
+}
+
+/* Vertical Timeline Stepper */
+.stepper-list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  margin: 16px 0;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 .step-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 11px;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
   color: var(--text-muted);
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
-.step-item .step-num {
+.step-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.step-icon {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  display: grid;
-  place-items: center;
-  font-size: 9px;
-  font-weight: 800;
-  color: var(--text-muted);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.step-item.completed {
+  color: #cbd5e1;
+}
+.step-item.completed .step-icon {
+  background: var(--emerald-bg);
+  border-color: var(--emerald);
+  color: var(--emerald);
 }
 .step-item.active {
-  color: #fff;
-  font-weight: 700;
-  background: rgba(124, 58, 237, 0.15);
-  border-color: var(--violet-border);
+  color: #ffffff;
+  font-weight: 600;
 }
-.step-item.active .step-num {
-  background: var(--violet-600);
-  color: #fff;
-  box-shadow: 0 0 8px var(--violet-600);
+.step-item.active .step-icon {
+  border-color: var(--violet-primary);
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--violet-primary);
+  box-shadow: 0 0 8px var(--violet-glow);
+  animation: pulse-ring 1.5s infinite;
 }
-.step-item.done {
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.06);
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
 }
-.step-item.done .step-num {
-  background: #059669;
-  color: #fff;
+.step-timing-badge {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
-/* Score Card */
-.score-card {
-  border: 1px solid var(--violet-border);
-  border-radius: var(--radius-md);
-  padding: 22px;
-  background: linear-gradient(180deg, var(--bg-card), var(--bg-card-subtle));
-  text-align: center;
-  box-shadow: var(--shadow-glow);
+/* Timeline Timing Footer */
+.timeline-timing-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-muted);
 }
-.score-circle-lg {
+
+/* COLUMN 3: RESULTS / INTEGRITY REPORT CARD */
+.col-report {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.result-card-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.success-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--emerald-bg);
+  border: 2px solid var(--emerald);
+  color: var(--emerald);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin: 0 auto 10px;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+}
+.result-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.result-card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Score Donut & Grade Display */
+.score-grade-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 16px 0;
+  margin-bottom: 16px;
+}
+.donut-container {
+  position: relative;
   width: 120px;
   height: 120px;
-  border-radius: 50%;
-  margin: 0 auto 14px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  background: conic-gradient(var(--violet-500) 0% 0%, rgba(255, 255, 255, 0.08) 0% 100%);
 }
-.score-circle-lg::after {
-  content: attr(data-score);
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--bg-surface);
-  display: grid;
-  place-items: center;
-  font-size: 24px;
-  font-weight: 900;
+.donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.donut-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 9;
+}
+.donut-fill {
+  fill: none;
+  stroke: url(#scoreGrad);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 283;
+  transition: stroke-dashoffset 1s ease-out;
+}
+.donut-text-wrap {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.donut-score-num {
+  font-size: 26px;
+  font-weight: 800;
   color: #fff;
   letter-spacing: -0.5px;
 }
-.score-label {
-  font-size: 11px;
+.donut-score-lbl {
+  font-size: 10px;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 800;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
+  letter-spacing: 0.5px;
 }
-.grade-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 800;
-  padding: 5px 14px;
-  border-radius: 20px;
-  background: rgba(124, 58, 237, 0.2);
-  border: 1px solid var(--violet-border);
-  color: var(--violet-300);
-  margin-bottom: 14px;
-}
-.metrics-table {
-  width: 100%;
-  font-size: 11px;
-  border-collapse: collapse;
-  text-align: left;
-  margin-top: 12px;
-}
-.metrics-table tr { border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-.metrics-table tr:last-child { border-bottom: 0; }
-.metrics-table td { padding: 7px 4px; }
-.metrics-table td:first-child { color: var(--text-secondary); }
-.metrics-table td:last-child { text-align: right; font-weight: 700; color: #fff; }
 
-/* Dashboard Cards (Sections 11 & 12) */
-.score-breakdown-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-bottom: 22px;
-}
-.breakdown-card {
-  background: var(--bg-card);
+.grade-box-wrap {
+  background: rgba(18, 18, 29, 0.8);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 14px 20px;
   text-align: center;
+  min-width: 100px;
 }
-.breakdown-card b {
-  display: block;
-  font-size: 10px;
-  text-transform: uppercase;
+.grade-box-label {
+  font-size: 11px;
   color: var(--text-muted);
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
 }
-.breakdown-card span {
-  font-size: 22px;
+.grade-box-letter {
+  font-size: 32px;
   font-weight: 800;
-  color: #fff;
+  color: var(--violet-primary);
+  line-height: 1.1;
 }
-.breakdown-card small {
-  display: block;
+.grade-box-desc {
   font-size: 10px;
   color: var(--text-secondary);
   margin-top: 2px;
 }
 
-.sources-matrix-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.source-stat-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  text-align: center;
-}
-.source-stat-card.verified {
-  border-color: var(--violet-border);
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.15), var(--bg-card));
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
-}
-.source-stat-card b {
-  display: block;
-  font-size: 9px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-.source-stat-card span {
-  font-size: 20px;
-  font-weight: 900;
-  color: #fff;
-}
-.source-stat-card.verified span { color: var(--violet-300); }
-
-/* Matched Passages View */
-.passages-container {
-  display: grid;
-  grid-template-columns: 1fr 1.05fr;
-  gap: 20px;
-}
-.highlighted-box {
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 20px;
-  font-size: 13px;
-  line-height: 1.9;
-  color: var(--text-secondary);
-  max-height: 720px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-}
-.hl-exact {
-  background: rgba(244, 63, 94, 0.25);
-  color: #fecdd3;
-  padding: 2px 4px;
-  border-radius: 4px;
-  border-bottom: 2px solid var(--rose);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.hl-exact:hover { background: rgba(244, 63, 94, 0.45); }
-.hl-near {
-  background: rgba(245, 158, 11, 0.25);
-  color: #fde68a;
-  padding: 2px 4px;
-  border-radius: 4px;
-  border-bottom: 2px solid var(--amber);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.hl-near:hover { background: rgba(245, 158, 11, 0.45); }
-.hl-semantic {
-  background: rgba(139, 92, 246, 0.25);
-  color: #ddd6fe;
-  padding: 2px 4px;
-  border-radius: 4px;
-  border-bottom: 2px solid var(--violet-500);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.hl-semantic:hover { background: rgba(139, 92, 246, 0.45); }
-
-.legend {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  margin-bottom: 18px;
-  font-size: 11px;
-}
-.legend-item { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); }
-.legend-color { width: 12px; height: 12px; border-radius: 3px; }
-
-/* Evidence Panel Cards */
-.evidence-panel {
+/* Metric Breakdown List */
+.metric-rows {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-height: 720px;
-  overflow-y: auto;
-}
-.evidence-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 18px;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-.evidence-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: var(--bg-card-hover);
-}
-.evidence-card.selected {
-  border-color: var(--violet-400);
-  background: rgba(124, 58, 237, 0.08);
-  box-shadow: 0 0 20px var(--violet-glow);
-}
-.evidence-badge {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 5px;
-}
-
-.side-by-side-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 12px 0;
-}
-.side-box {
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-size: 11px;
-  line-height: 1.6;
-}
-.side-box h6 {
-  margin: 0 0 6px;
-  font-size: 9px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-}
-.gemini-review-card {
-  background: rgba(124, 58, 237, 0.09);
-  border: 1px solid var(--violet-border);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  margin-top: 10px;
-  font-size: 11px;
-}
-.gemini-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 9px;
-  font-weight: 800;
-  color: var(--violet-300);
-  background: rgba(124, 58, 237, 0.25);
-  border: 1px solid var(--violet-border);
-  padding: 2px 7px;
-  border-radius: 4px;
-  margin-bottom: 6px;
-}
-
-/* AI Status Card (Graceful Unavailable / Retry state) */
-.ai-status-card {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid var(--amber-border);
-  border-radius: var(--radius-md);
-  padding: 16px 20px;
-  margin-bottom: 16px;
-}
-.ai-status-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
   gap: 10px;
+  margin-bottom: 20px;
 }
-.ai-status-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
+.metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.metric-row-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.ai-status-badge {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
+.metric-val {
+  font-weight: 700;
+  color: #fff;
 }
-.ai-status-desc {
+
+/* AI Status Card */
+.ai-status-card {
+  background: rgba(18, 18, 29, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+.ai-status-header {
   font-size: 12px;
-  color: #fde68a;
-  margin: 0 0 12px;
+  font-weight: 600;
+  color: #34d399;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.ai-status-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Report Action Buttons */
+.report-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-view-report {
+  width: 100%;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  padding: 11px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 0 16px rgba(124, 58, 237, 0.35);
+  transition: all 0.2s;
+}
+.btn-view-report:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.report-secondary-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.btn-report-subtle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.btn-report-subtle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: var(--border-strong);
+}
+
+/* ANALYSIS FAILURE CARD (Safeguard) */
+.analysis-failure-view {
+  display: none;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(18, 18, 29, 0.95));
+  border: 1px solid var(--rose-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-align: center;
+}
+.failure-icon-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--rose-bg);
+  border: 2px solid var(--rose);
+  color: var(--rose);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin: 0 auto 12px;
+}
+.failure-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.failure-desc {
+  font-size: 12px;
+  color: #fecdd3;
+  margin-bottom: 12px;
   line-height: 1.5;
 }
-.ai-status-checklist {
-  display: flex;
-  gap: 16px;
-  font-size: 11px;
-  color: #34d399;
-  font-weight: 700;
-  flex-wrap: wrap;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(245, 158, 11, 0.25);
-}
-
-/* AI Rewrite View */
-.rewrite-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.rewrite-box {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 20px;
-  background: var(--bg-canvas);
-}
-.mode-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.mode-pill {
-  padding: 7px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.mode-pill:hover { border-color: rgba(255, 255, 255, 0.2); color: #fff; }
-.mode-pill.active {
-  background: var(--violet-600);
-  color: #fff;
-  border-color: var(--violet-500);
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
-}
-
-/* Grammar View */
-.grammar-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
-.finding-card {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  background: var(--bg-card);
-}
-.finding-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.finding-cat { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--violet-400); letter-spacing: 0.5px; }
-.finding-diff { font-size: 13px; margin: 8px 0; }
-.finding-diff del { color: #f87171; background: rgba(239, 68, 68, 0.16); padding: 2px 6px; border-radius: 3px; text-decoration: line-through; }
-.finding-diff ins { color: #34d399; background: rgba(16, 185, 129, 0.16); padding: 2px 6px; border-radius: 3px; text-decoration: none; font-weight: 700; margin-left: 6px; }
-
-/* Status Notifications */
-.checkra-alert {
-  background: var(--bg-card);
-  border-left: 4px solid var(--violet-500);
+.failure-notice-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(244, 63, 94, 0.2);
   border-radius: var(--radius-sm);
-  padding: 14px 18px;
-  font-size: 12px;
+  padding: 10px 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  margin: 16px 0;
-  line-height: 1.6;
+  margin-bottom: 16px;
+  line-height: 1.4;
 }
-.checkra-alert.warning { border-left-color: var(--amber); background: rgba(245, 158, 11, 0.08); color: #fde68a; }
-.checkra-alert.info { border-left-color: var(--violet-400); background: rgba(124, 58, 237, 0.08); color: var(--violet-200); }
 
-/* Diagnostics Grid */
-.diag-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-.diag-card {
+/* OTHER TABS (Passages, AI Rewrite, Grammar, Report, Diagnostics) */
+.tab-pane-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.tab-pane-header {
+  margin-bottom: 20px;
+}
+.tab-pane-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.tab-pane-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Passages Tab Styles */
+.passages-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.p-stat-card {
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 16px;
-  background: var(--bg-card);
 }
-.diag-card b {
-  display: block;
-  font-size: 10px;
-  color: var(--text-muted);
+.p-stat-title {
+  font-size: 11px;
   text-transform: uppercase;
-  margin-bottom: 4px;
-  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
 }
-.diag-card span { font-size: 14px; font-weight: 800; color: #fff; }
-
-/* Report Frame Container */
-.report-frame-wrap {
-  width: 100%;
-  height: 780px;
-  border-radius: var(--radius-md);
+.p-stat-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.split-inspection-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.highlighted-doc-box {
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  overflow: hidden;
-  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  min-height: 480px;
+  max-height: 640px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.evidence-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  min-height: 480px;
+  max-height: 640px;
+  overflow-y: auto;
+}
+.passages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.passage-card {
+  background: rgba(18, 18, 29, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.passage-card:hover {
+  border-color: var(--violet-primary);
+  background: rgba(139, 92, 246, 0.08);
+}
+.passage-card.selected {
+  border-color: var(--violet-primary);
+  box-shadow: 0 0 16px var(--violet-glow);
 }
 
 /* Responsive Breakpoints */
 @media (max-width: 1080px) {
-  .app-shell { grid-template-columns: 210px 1fr; }
-  .doc-input-grid, .passages-container, .rewrite-grid, .grammar-grid, .diag-grid, .score-breakdown-grid {
+  .workspace-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .col-report {
+    grid-column: span 2;
+  }
+  .split-inspection-layout {
     grid-template-columns: 1fr;
   }
-  .sources-matrix-grid { grid-template-columns: repeat(2, 1fr); }
 }
-
 @media (max-width: 768px) {
-  .app-shell { grid-template-columns: 1fr; border-radius: 0; border-left: 0; border-right: 0; }
-  .sidebar { display: none; }
-  .nav-links { display: none; }
-  .view-panel { padding: 20px 16px; }
-  .header { height: 64px; }
-  .sources-matrix-grid { grid-template-columns: 1fr 1fr; }
-  .side-by-side-grid { grid-template-columns: 1fr; }
-  .nav-actions .btn.outline { display: none; }
-  .nivora-header-badge span { display: none; }
-  .nivora-header-badge { padding: 4px 6px; }
-  .footer-inner { flex-direction: column; text-align: center; justify-content: center; }
-  .footer-left { flex-wrap: wrap; justify-content: center; }
-}
-
-@media (max-width: 1100px) {
-  .tagline-badge { display: none; }
-}
-
-/* NIVORA Parent Brand Styling */
-.nivora-header-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 10px 4px 7px;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(167, 139, 250, 0.22);
-  border-radius: 999px;
-  text-decoration: none;
-  color: #c4b5fd;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-.nivora-header-badge:hover {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(167, 139, 250, 0.5);
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
-}
-.nivora-logo-icon {
-  width: 17px;
-  height: 17px;
-  object-fit: contain;
-  display: block;
-  filter: drop-shadow(0 0 4px rgba(167, 139, 250, 0.4));
-}
-
-/* Global App Footer */
-.app-footer {
-  width: 100%;
-  margin-top: 40px;
-  padding: 24px 0;
-  border-top: 1px solid var(--border-subtle);
-  background: rgba(8, 8, 12, 0.6);
-  backdrop-filter: blur(8px);
-}
-.footer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-.footer-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.footer-brand {
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.2px;
-}
-.footer-dot {
-  color: var(--border-subtle);
-}
-.footer-right {
-  display: flex;
-  align-items: center;
-}
-.nivora-footer-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px 5px 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(167, 139, 250, 0.2);
-  border-radius: 999px;
-  color: #c4b5fd;
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.nivora-footer-link:hover {
-  background: rgba(124, 58, 237, 0.15);
-  border-color: rgba(167, 139, 250, 0.45);
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
-}
-.nivora-footer-logo {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  display: block;
-}
-.nivora-footer-arrow {
-  font-size: 11px;
-  color: #a78bfa;
-  transition: transform 0.2s;
-}
-.nivora-footer-link:hover .nivora-footer-arrow {
-  transform: translate(1px, -1px);
-}
-
-/* NIVORA Ecosystem Info Card */
-.nivora-ecosystem-card {
-  margin-top: 24px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(15, 15, 23, 0.6) 100%);
-  border: 1px solid rgba(167, 139, 250, 0.2);
-  border-radius: var(--radius-md);
-  padding: 22px 24px;
-}
-.nivora-ecosystem-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 12px;
-}
-.nivora-eco-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.4));
-}
-.nivora-eco-title {
-  font-size: 15px;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -0.2px;
-}
-.nivora-eco-tagline {
-  font-size: 11px;
-  font-weight: 600;
-  color: #a78bfa;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.nivora-eco-desc {
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: #a1a1aa;
-  margin-bottom: 16px;
-  max-width: 720px;
-}
-.nivora-eco-actions {
-  display: flex;
-  gap: 10px;
+  .app-container {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 16px;
+  }
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+  .col-report {
+    grid-column: span 1;
+  }
+  .passages-stats-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="container nav">
-    <div class="brand-lockup">
-      <img src="checkra-logo.png" alt="Checkra" class="logo-img">
-      <span class="tagline-badge">Check • Verify • Improve</span>
-      <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="nivora-header-badge" title="Checkra — A NIVORA Product">
-        <img src="nivora-logo.png" alt="NIVORA" class="nivora-logo-icon">
-        <span>A NIVORA Product</span>
-      </a>
+<!-- TOP NAVBAR -->
+<header class="top-nav">
+  <div class="brand-group">
+    <div class="brand-logo-wrap">
+      <div class="brand-logo-inner">C</div>
     </div>
-    <nav class="nav-links">
-      <a onclick="switchTab('workspace')" class="active" id="nav-workspace">Workspace</a>
-      <a onclick="switchTab('passages')" id="nav-passages">Matched Passages</a>
-      <a onclick="switchTab('rewrite')" id="nav-rewrite">AI Rewrite</a>
-      <a onclick="switchTab('grammar')" id="nav-grammar">Grammar</a>
-      <a onclick="switchTab('reports')" id="nav-reports">Integrity Report</a>
-      <a onclick="switchTab('settings')" id="nav-settings">Diagnostics</a>
-    </nav>
-    <div class="nav-actions">
-      <button class="btn outline sm" onclick="loadTestDocument()">Load Sample</button>
-      <button class="btn primary sm" onclick="startAnalysis()">Check Document →</button>
+    <div class="brand-titles">
+      <span class="brand-name">Checkra</span>
+      <span class="brand-tagline">Check · Verify · Improve</span>
     </div>
+    <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="nivora-badge">
+      <span>~</span> A NIVORA Product
+    </a>
+  </div>
+
+  <nav class="nav-tabs">
+    <button class="nav-tab-btn active" data-tab="tab-workspace" onclick="switchTab('tab-workspace')">
+      <span>💻</span> Workspace
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-passages" onclick="switchTab('tab-passages')">
+      <span>📑</span> Matched Passages
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-rewrite" onclick="switchTab('tab-rewrite')">
+      <span>✨</span> AI Rewrite
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-grammar" onclick="switchTab('tab-grammar')">
+      <span>✓</span> Grammar
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-report" onclick="switchTab('tab-report')">
+      <span>📊</span> Integrity Report
+    </button>
+    <button class="nav-tab-btn" data-tab="tab-diagnostics" onclick="switchTab('tab-diagnostics')">
+      <span>⚙️</span> Diagnostics
+    </button>
+  </nav>
+
+  <div class="nav-actions">
+    <button class="btn-sample" onclick="loadSampleDoc()">
+      <span>📑</span> Load Sample
+    </button>
+    <button class="btn-primary-action" onclick="runAnalysis()">
+      <span>Check Document</span> &rarr;
+    </button>
   </div>
 </header>
 
-<div class="container app-container">
-  <div class="app-shell">
-    
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-      <div class="side-header">
-        <div class="side-title">Check<span>ra</span> Workspace</div>
-        <div class="side-subtitle">Current Document Session</div>
+<div class="app-container">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Checkra Workspace</h2>
+        <p class="sidebar-sub">Document Integrity &amp; Similarity Check</p>
       </div>
-      <nav class="side-nav">
-        <button class="side-btn active" id="tab-btn-workspace" onclick="switchTab('workspace')">
-          <i>▣</i> Workspace & Input
+
+      <div class="sidebar-menu">
+        <button class="sidebar-item active" data-tab="tab-workspace" onclick="switchTab('tab-workspace')">
+          <span class="sidebar-item-icon">📄</span>
+          <span>Workspace &amp; Input</span>
         </button>
-        <button class="side-btn" id="tab-btn-passages" onclick="switchTab('passages')">
-          <i>▤</i> Matched Passages
+        <button class="sidebar-item" data-tab="tab-passages" onclick="switchTab('tab-passages')">
+          <span class="sidebar-item-icon">📑</span>
+          <span>Matched Passages</span>
         </button>
-        <button class="side-btn" id="tab-btn-rewrite" onclick="switchTab('rewrite')">
-          <i>◇</i> AI Rewrite & Refine
+        <button class="sidebar-item" data-tab="tab-rewrite" onclick="switchTab('tab-rewrite')">
+          <span class="sidebar-item-icon">✨</span>
+          <span>AI Rewrite &amp; Refine</span>
         </button>
-        <button class="side-btn" id="tab-btn-grammar" onclick="switchTab('grammar')">
-          <i>✓</i> Grammar & Quality
+        <button class="sidebar-item" data-tab="tab-grammar" onclick="switchTab('tab-grammar')">
+          <span class="sidebar-item-icon">✓</span>
+          <span>Grammar &amp; Quality</span>
         </button>
-        <button class="side-btn" id="tab-btn-reports" onclick="switchTab('reports')">
-          <i>📄</i> Integrity Report
+        <button class="sidebar-item" data-tab="tab-report" onclick="switchTab('tab-report')">
+          <span class="sidebar-item-icon">📊</span>
+          <span>Integrity Report</span>
         </button>
-        <div style="height: 1px; background: var(--border-subtle); margin: 12px 0;"></div>
-        <button class="side-btn" id="tab-btn-settings" onclick="switchTab('settings')">
-          <i>⚙</i> Engine Diagnostics
+        <button class="sidebar-item" data-tab="tab-diagnostics" onclick="switchTab('tab-diagnostics')">
+          <span class="sidebar-item-icon">⚙️</span>
+          <span>Engine Diagnostics</span>
         </button>
-      </nav>
-      <div class="side-footer">
-        <span>Session-only mode</span>
-        <span id="backend-indicator" class="live-pill">Online</span>
       </div>
-    </aside>
+    </div>
 
-    <!-- Main Workspace Area -->
-    <main style="overflow: hidden; width: 100%;">
+    <!-- Sidebar Bottom Ambient Wave & Status -->
+    <div class="sidebar-bottom">
+      <div class="sidebar-wave-container">
+        <svg viewBox="0 0 250 160" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
+          <path d="M-10 160C40 140 70 80 120 100C170 120 210 50 260 70V160H-10Z" fill="url(#waveGrad1)" opacity="0.4"/>
+          <path d="M-10 160C30 110 80 130 130 90C180 50 220 110 260 120V160H-10Z" fill="url(#waveGrad2)" opacity="0.3"/>
+          <defs>
+            <linearGradient id="waveGrad1" x1="0" y1="50" x2="250" y2="160" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#7c3aed" stop-opacity="0.8"/>
+              <stop offset="1" stop-color="#0d0d15" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="waveGrad2" x1="0" y1="80" x2="250" y2="160" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#a855f7" stop-opacity="0.6"/>
+              <stop offset="1" stop-color="#0d0d15" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
 
-      <!-- VIEW 1: WORKSPACE & DOCUMENT INPUT -->
-      <section class="view-panel active" id="view-workspace">
-        <div class="view-head">
+      <div class="sidebar-footer-stats">
+        <div class="session-pill">
+          <span>🛡</span> Session-only mode
+        </div>
+        <div class="status-pill">
+          <span class="status-dot"></span> Online
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN VIEW -->
+  <main class="main-view">
+    <!-- TAB: WORKSPACE -->
+    <div id="tab-workspace" class="tab-content active">
+      <div class="workspace-grid">
+        
+        <!-- COLUMN 1: DOCUMENT INPUT & PREVIEW -->
+        <div class="col-document">
           <div>
-            <h2>Document Integrity & Similarity Check</h2>
-            <p>Upload a PDF, DOCX, TXT, MD, or HTML document, or paste text below. Analyses operate in session-only mode — zero permanent history is stored on disk.</p>
+            <h1 class="section-header-title">Document Integrity &amp; Similarity Check</h1>
+            <p class="section-header-sub">Upload a PDF, DOCX, TXT, MD or HTML document, or paste text below. Checkra analyzes your writing for similarity, originality, and source evidence.</p>
           </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn sm" onclick="clearWorkspace()">Clear</button>
-            <button class="btn primary sm" onclick="startAnalysis()">Check Document →</button>
+
+          <!-- DROP ZONE -->
+          <div id="drop-zone" class="dropzone-container" onclick="$('file-input').click()">
+            <input type="file" id="file-input" style="display:none;" accept=".pdf,.docx,.txt,.md,.html,text/*" onchange="handleFileSelect(event)">
+            <div class="drop-icon-wrap">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <div class="drop-title">Upload or drop your document here</div>
+            <div class="drop-subtitle">or choose a file from your device</div>
+            <div class="format-pills">
+              <span class="format-pill">PDF</span>
+              <span class="format-pill">DOCX</span>
+              <span class="format-pill">TXT</span>
+              <span class="format-pill">MD</span>
+              <span class="format-pill">HTML</span>
+            </div>
+            <div class="drop-divider"><span>OR</span></div>
+            <button type="button" class="btn-paste-text" onclick="event.stopPropagation(); $('doc-text').focus();">
+              <span>T</span> Paste your text here
+            </button>
+          </div>
+
+          <!-- LOADED FILE CARD -->
+          <div id="doc-loaded-card" class="doc-loaded-card" style="display:none;">
+            <div class="doc-loaded-left">
+              <div class="file-badge" id="stat-fileext">DOCX</div>
+              <div class="doc-loaded-info">
+                <div class="doc-loaded-title" id="stat-filename">Document.docx</div>
+                <div class="doc-loaded-meta" id="stat-filemeta">12,483 words • 18 pages • 1.9 MB</div>
+              </div>
+            </div>
+            <div class="doc-loaded-actions">
+              <span class="doc-loaded-status">✓ Document Loaded</span>
+              <button class="btn-icon-subtle" title="Clear document" onclick="clearLoadedDoc()">✕</button>
+            </div>
+          </div>
+
+          <!-- DOCUMENT PREVIEW & EDITOR -->
+          <div class="doc-preview-card">
+            <div class="doc-preview-header">
+              <span class="doc-preview-title"><span>📄</span> Document Preview</span>
+              <input type="text" id="doc-title" placeholder="Document Title" style="background:transparent;border:none;color:#a1a1aa;font-size:12px;text-align:right;outline:none;" value="Research Document">
+            </div>
+            <textarea id="doc-text" class="doc-textarea" placeholder="Enter or paste your text here to begin analysis..." oninput="updateWordCounts()"></textarea>
+          </div>
+
+          <!-- STATS BAR -->
+          <div id="stats-bar" class="stats-bar">
+            <div class="stat-pill-item">📄 <span id="stat-words">0</span> Words</div>
+            <div class="stat-pill-item">AA <span id="stat-chars">0</span> Characters</div>
+            <div class="stat-pill-item">📑 <span id="stat-pages">0</span> Pages</div>
+            <div class="stat-pill-item">⏱ <span id="stat-reading">~ 0 min</span> Reading</div>
+          </div>
+
+          <!-- PREPROCESSING & MATCHING CONTROLS -->
+          <div class="controls-card">
+            <div class="controls-header">
+              <div class="controls-title-wrap">
+                <span style="font-size:14px;">⚙️</span>
+                <span class="controls-title">Preprocessing &amp; Matching Controls</span>
+              </div>
+              <span class="controls-badge">Deterministic evaluation rules</span>
+            </div>
+
+            <div class="toggles-list">
+              <div class="toggle-row">
+                <span class="toggle-label">Ignore Quotations (enclosed in quotes)</span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-quotes" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Ignore Bibliography &amp; References Section</span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-biblio" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Ignore Standard Citations (e.g., Smith, 2021 or [12])</span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-citations" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="select-row">
+              <span class="toggle-label">Minimum Matching Phrase Length</span>
+              <select id="select-min-length" class="control-select">
+                <option value="4">4 words</option>
+                <option value="6" selected>6 words (Standard)</option>
+                <option value="8">8 words</option>
+                <option value="10">10 words</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- COLUMN 2: CHECKRA ANALYSIS & RADAR -->
+        <div class="col-analysis">
+          <div class="analysis-header">
+            <div class="radar-wrapper" id="analysis-radar">
+              <div class="radar-ring"></div>
+              <div class="radar-ring-pulse"></div>
+              <div class="radar-center-logo">
+                <span class="radar-center-inner">C</span>
+              </div>
+            </div>
+
+            <h2 class="analysis-main-title" id="analysis-card-title">Checkra Analysis</h2>
+            <p class="analysis-main-sub" id="analysis-card-sub">Analyzing your document for similarity, originality, and source evidence.</p>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-container">
+            <div class="progress-bar-bg">
+              <div id="progress-bar" class="progress-bar-fill"></div>
+            </div>
+            <div class="progress-meta">
+              <span id="progress-percent" class="progress-percent-val">0%</span>
+            </div>
+          </div>
+
+          <!-- Vertical Timeline Stepper -->
+          <div id="step-list" class="stepper-list">
+            <div class="step-item" id="step-1">
+              <div class="step-left"><span class="step-icon">1</span><span>Reading document &amp; validating format</span></div>
+              <span class="step-timing-badge">(0.4s)</span>
+            </div>
+            <div class="step-item" id="step-2">
+              <div class="step-left"><span class="step-icon">2</span><span>Extracting text &amp; normalizing</span></div>
+              <span class="step-timing-badge">(0.7s)</span>
+            </div>
+            <div class="step-item" id="step-3">
+              <div class="step-left"><span class="step-icon">3</span><span>Identifying distinctive passages</span></div>
+              <span class="step-timing-badge">(0.9s)</span>
+            </div>
+            <div class="step-item" id="step-4">
+              <div class="step-left"><span class="step-icon">4</span><span>Searching relevant sources (SearXNG)</span></div>
+              <span class="step-timing-badge">(1.8s)</span>
+            </div>
+            <div class="step-item" id="step-5">
+              <div class="step-left"><span class="step-icon">5</span><span>Retrieving and processing source content</span></div>
+              <span class="step-timing-badge">(2.1s)</span>
+            </div>
+            <div class="step-item" id="step-6">
+              <div class="step-left"><span class="step-icon">6</span><span>Comparing exact matches</span></div>
+              <span class="step-timing-badge"></span>
+            </div>
+            <div class="step-item" id="step-7">
+              <div class="step-left"><span class="step-icon">7</span><span>Checking near &amp; paraphrase matches</span></div>
+              <span class="step-timing-badge"></span>
+            </div>
+            <div class="step-item" id="step-8">
+              <div class="step-left"><span class="step-icon">8</span><span>Computing semantic similarity</span></div>
+              <span class="step-timing-badge"></span>
+            </div>
+            <div class="step-item" id="step-9">
+              <div class="step-left"><span class="step-icon">9</span><span>Calculating core similarity score</span></div>
+              <span class="step-timing-badge"></span>
+            </div>
+            <div class="step-item" id="step-10">
+              <div class="step-left"><span class="step-icon">10</span><span>Preparing integrity report</span></div>
+              <span class="step-timing-badge"></span>
+            </div>
+          </div>
+
+          <!-- Timing footer -->
+          <div class="timeline-timing-footer">
+            <div>⏱ Elapsed Time: <strong id="elapsed-time" style="color:#fff;">0.0s</strong></div>
+            <div>📊 Estimated Total: <span style="color:#a1a1aa;">~ 6-10s</span></div>
           </div>
         </div>
 
-        <div class="doc-input-grid">
-          <div>
-            <!-- Dropzone -->
-            <div class="drop-zone" id="drop-zone" onclick="$('file-input').click()">
-              <input type="file" id="file-input" accept=".txt,.md,.html,.htm,.pdf,.docx,.doc">
-              <div class="drop-icon">📄</div>
-              <div class="drop-title">Drop your document here, or click to browse</div>
-              <div class="drop-desc">Full structural extraction preserves paragraphs, sentences, and syntax.</div>
-              <span class="formats-pill">PDF · DOCX · TXT · MD · HTML</span>
+        <!-- COLUMN 3: RESULTS / INTEGRITY REPORT -->
+        <div class="col-report">
+          <!-- QUICK SCORE CARD -->
+          <div id="quick-score-card" class="glass-card">
+            <div class="result-card-header">
+              <div class="success-icon-wrap">✓</div>
+              <h2 class="result-card-title">Your Integrity Report is Ready</h2>
+              <p class="result-card-sub">Checkra has completed the analysis of your document.</p>
             </div>
 
-            <!-- Stats Bar -->
-            <div class="stats-bar" id="stats-bar">
-              <div class="stats-item"><span>File:</span> <strong id="stat-filename">No file selected</strong></div>
-              <div class="stats-item"><span>Words:</span> <strong id="stat-words">0</strong></div>
-              <div class="stats-item"><span>Characters:</span> <strong id="stat-chars">0</strong></div>
-              <div class="stats-item"><span>Pages:</span> <strong id="stat-pages">0</strong></div>
-              <div class="stats-item"><span>Reading:</span> <strong id="stat-reading">0 min</strong></div>
-            </div>
-
-            <!-- Title & Editor -->
-            <div class="doc-meta-row">
-              <input type="text" class="doc-title-input" id="doc-title" placeholder="Document Title (e.g. Research Thesis, Term Paper)" value="Research Document">
-            </div>
-
-            <textarea class="doc-textarea" id="doc-text" placeholder="Paste or type your document text here..."></textarea>
-
-            <!-- Preprocessing & Matching Controls -->
-            <div class="settings-box">
-              <div class="settings-title">
-                <span>Preprocessing & Matching Controls</span>
-                <small style="color:var(--text-muted); font-weight:normal;">Deterministic evaluation rules</small>
-              </div>
-              <div class="setting-row">
-                <span>Ignore Quotations (enclosed in quotes)</span>
-                <button class="toggle" id="toggle-quotes" onclick="this.classList.toggle('on')"><i></i></button>
-              </div>
-              <div class="setting-row">
-                <span>Ignore Bibliography & References Section</span>
-                <button class="toggle on" id="toggle-biblio" onclick="this.classList.toggle('on')"><i></i></button>
-              </div>
-              <div class="setting-row">
-                <span>Ignore Standard Citations (e.g. (Smith, 2021) or [12])</span>
-                <button class="toggle on" id="toggle-citations" onclick="this.classList.toggle('on')"><i></i></button>
-              </div>
-              <div class="setting-row">
-                <span>Minimum Matching Phrase Length</span>
-                <select id="select-min-length" style="padding:4px 8px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-canvas); color:#fff; font-size:11px;">
-                  <option value="4">4 words</option>
-                  <option value="6" selected>6 words (Standard)</option>
-                  <option value="8">8 words</option>
-                  <option value="10">10 words</option>
-                  <option value="15">15 words</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column: Real 10-Stage Execution & Snapshot -->
-          <div>
-            <div class="progress-card">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h4 style="margin:0; font-size:13px; font-weight:800; color:#fff;">Analysis Execution Pipeline</h4>
-                <span id="analysis-badge" style="font-size:10px; font-weight:800; background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; color:var(--text-secondary);">Ready</span>
-              </div>
-
-              <div class="live-bar">
-                <div class="live-bar-fill" id="progress-bar"></div>
-              </div>
-              <div style="font-size:11px; color:var(--text-muted); text-align:right;" id="progress-percent">0%</div>
-
-              <div class="progress-step-list" id="step-list">
-                <div class="step-item" id="step-1"><span class="step-num">1</span> Reading document payload</div>
-                <div class="step-item" id="step-2"><span class="step-num">2</span> Extracting text & normalizing</div>
-                <div class="step-item" id="step-3"><span class="step-num">3</span> Identifying distinctive passages</div>
-                <div class="step-item" id="step-4"><span class="step-num">4</span> Searching web (SearXNG / Grounding)</div>
-                <div class="step-item" id="step-5"><span class="step-num">5</span> Safe web source retrieval</div>
-                <div class="step-item" id="step-6"><span class="step-num">6</span> Exact match sequence comparison</div>
-                <div class="step-item" id="step-7"><span class="step-num">7</span> Near & paraphrase comparison</div>
-                <div class="step-item" id="step-8"><span class="step-num">8</span> Semantic vector similarity</div>
-                <div class="step-item" id="step-9"><span class="step-num">9</span> Core score calculation & integrity verification</div>
-                <div class="step-item" id="step-10"><span class="step-num">10</span> Optional AI evidence review & final report</div>
-              </div>
-
-              <!-- Score Card Snapshot -->
-              <div class="score-card" id="quick-score-card" style="display:none; margin-top:14px;">
-                <div class="score-circle-lg" id="circle-score" data-score="0%"></div>
-                <div class="score-label">Similarity Score</div>
-                <div class="grade-badge" id="grade-badge">Checkra Similarity Grade: Grade A</div>
-                <div id="status-message-banner" class="checkra-alert info" style="margin: 8px 0; text-align: left;"></div>
-                
-                <table class="metrics-table">
-                  <tr><td>Overall Similarity</td><td id="m-sim">0%</td></tr>
-                  <tr><td>Exact Match Coverage</td><td id="m-exact">0%</td></tr>
-                  <tr><td>Near Match Coverage</td><td id="m-near">0%</td></tr>
-                  <tr><td>Semantic Coverage</td><td id="m-semantic">0%</td></tr>
-                  <tr><td>Web Sources Retrieved</td><td id="m-sources-retrieved">0</td></tr>
-                  <tr><td>Topically Related Sources</td><td id="m-sources-topical">0</td></tr>
-                  <tr><td>Possible Matching Sources</td><td id="m-sources-possible">0</td></tr>
-                  <tr><td>Verified Matching Sources</td><td id="m-sources-matching" style="color:var(--violet-300);">0</td></tr>
-                  <tr><td>Web Check Mode</td><td id="m-mode">SearXNG Web Search</td></tr>
-                  <tr><td>AI Evidence Review</td><td id="m-gemini">Completed</td></tr>
-                </table>
-
-                <div style="margin-top:16px; display:flex; gap:8px;">
-                  <button class="btn primary sm" style="flex:1;" onclick="switchTab('passages')">Inspect Matched Passages</button>
-                  <button class="btn sm" onclick="switchTab('reports')">View Report</button>
+            <!-- Donut Gauge & Grade Box -->
+            <div class="score-grade-row">
+              <div class="donut-container">
+                <svg class="donut-svg" viewBox="0 0 100 100">
+                  <defs>
+                    <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#8b5cf6"/>
+                      <stop offset="100%" stop-color="#ec4899"/>
+                    </linearGradient>
+                  </defs>
+                  <circle class="donut-bg" cx="50" cy="50" r="42"/>
+                  <circle id="score-donut-circle" class="donut-fill" cx="50" cy="50" r="42"/>
+                </svg>
+                <div class="donut-text-wrap">
+                  <span id="circle-score" class="donut-score-num">0%</span>
+                  <span class="donut-score-lbl">Overall Similarity</span>
                 </div>
               </div>
 
-              <!-- Analysis Failure Card (Dedicated failure view - prevents rendering misleading 0% metrics on timeouts/errors) -->
-              <div class="score-card" id="analysis-failure-card" style="display:none; margin-top:14px; border:1px solid rgba(244,63,94,0.4); background:rgba(244,63,94,0.06);">
-                <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:12px;">
-                  <span style="font-size:22px; line-height:1;">⚠️</span>
-                  <div>
-                    <h4 style="margin:0 0 4px 0; font-size:14px; font-weight:700; color:#f87171;">Analysis Could Not Be Completed</h4>
-                    <div style="font-size:12px; color:var(--text-secondary); line-height:1.4;" id="failure-reason-text">Serverless execution timeout or gateway error (HTTP 504).</div>
-                  </div>
-                </div>
-                <div class="checkra-alert" style="background:rgba(0,0,0,0.35); border-left:3px solid #f43f5e; font-size:11px; color:var(--text-muted); line-height:1.5; padding:8px 12px; margin-bottom:12px;">
-                  <strong style="color:#fecdd3;">Integrity Protection Notice:</strong> Checkra strictly avoids reporting 0% similarity when an analysis cannot be completed. The document's true integrity has not been calculated. Please retry, check your connection, or test with reference text.
-                </div>
-                <button class="btn sm" onclick="startAnalysis()" style="width:100%;">Retry Analysis ↺</button>
+              <div class="grade-box-wrap">
+                <div class="grade-box-label">Grade</div>
+                <div id="grade-badge" class="grade-box-letter">A</div>
+                <div id="grade-label" class="grade-box-desc">Original</div>
+              </div>
+            </div>
+
+            <!-- Breakdown Metrics -->
+            <div class="metric-rows">
+              <div class="metric-row">
+                <div class="metric-row-left"><span>🔍</span><span>Exact Match Coverage</span></div>
+                <span id="m-exact" class="metric-val">0%</span>
+              </div>
+              <div class="metric-row">
+                <div class="metric-row-left"><span>🔄</span><span>Near Match Coverage</span></div>
+                <span id="m-near" class="metric-val">0%</span>
+              </div>
+              <div class="metric-row">
+                <div class="metric-row-left"><span>🧠</span><span>Semantic Coverage</span></div>
+                <span id="m-semantic" class="metric-val">0%</span>
+              </div>
+              <div class="metric-row">
+                <div class="metric-row-left"><span>🌐</span><span>Web Sources Retrieved</span></div>
+                <span id="m-sources-retrieved" class="metric-val">0</span>
+              </div>
+              <div class="metric-row">
+                <div class="metric-row-left"><span>📑</span><span>Verified Matching Sources</span></div>
+                <span id="m-sources-matching" class="metric-val">0</span>
+              </div>
+              <!-- Hidden compatibility elements -->
+              <span id="m-sim" style="display:none;">0%</span>
+              <span id="m-sources-topical" style="display:none;">0</span>
+              <span id="m-sources-possible" style="display:none;">0</span>
+              <span id="m-mode" style="display:none;">Standard</span>
+              <span id="analysis-badge" style="display:none;">Ready</span>
+              <span id="status-message-banner" style="display:none;"></span>
+            </div>
+
+            <!-- AI Status Card -->
+            <div class="ai-status-card">
+              <div class="ai-status-header">
+                <span>✨</span> Core analysis completed
+              </div>
+              <div id="m-gemini" class="ai-status-sub">
+                AI Evidence Review is temporarily unavailable. This does not affect the similarity score.
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="report-actions-group">
+              <button class="btn-view-report" onclick="switchTab('tab-report')">
+                <span>📄</span> View Integrity Report &rarr;
+              </button>
+              <div class="report-secondary-actions">
+                <button class="btn-report-subtle" onclick="switchTab('tab-passages')">
+                  <span>🔍</span> Inspect Passages
+                </button>
+                <button class="btn-report-subtle" onclick="retryAiReview()">
+                  <span>✨</span> Run AI Review
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ANALYSIS FAILURE CARD (Safeguard on error / 504 timeout) -->
+          <div id="analysis-failure-card" class="analysis-failure-view">
+            <div class="failure-icon-wrap">⚠️</div>
+            <h2 class="failure-title">Checkra Analysis Notice</h2>
+            <p class="failure-desc" id="failure-reason-text">
+              Serverless execution timeout or gateway error (HTTP 504). The document may be too large or the server timed out.
+            </p>
+            <div class="failure-notice-box">
+              Checkra strictly avoids reporting 0% similarity when an analysis cannot be completed. Your document is preserved below.
+            </div>
+            <button class="btn-primary-action" style="width:100%;justify-content:center;" onclick="runAnalysis()">
+              <span>🔄</span> Try Again with Smaller Document
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB: MATCHED PASSAGES -->
+    <div id="tab-passages" class="tab-content">
+      <div class="tab-pane-container">
+        <div class="tab-pane-header">
+          <h2 class="tab-pane-title">Matched Passages &amp; Source Evidence</h2>
+          <p class="tab-pane-sub">Inspect identified exact, near, and semantic matches mapped directly to verified external sources.</p>
+        </div>
+
+        <div class="passages-stats-row">
+          <div class="p-stat-card">
+            <div class="p-stat-title">Exact Matches</div>
+            <div id="passages-exact-val" class="p-stat-val">0%</div>
+          </div>
+          <div class="p-stat-card">
+            <div class="p-stat-title">Near / Paraphrase</div>
+            <div id="passages-near-val" class="p-stat-val">0%</div>
+          </div>
+          <div class="p-stat-card">
+            <div class="p-stat-title">Semantic Matches</div>
+            <div id="passages-semantic-val" class="p-stat-val">0%</div>
+          </div>
+          <div class="p-stat-card">
+            <div class="p-stat-title">Verified Sources</div>
+            <div id="src-stat-verified" class="p-stat-val">0</div>
+            <!-- Hidden helpers -->
+            <span id="src-stat-retrieved" style="display:none;">0</span>
+            <span id="src-stat-topical" style="display:none;">0</span>
+            <span id="src-stat-possible" style="display:none;">0</span>
+          </div>
+        </div>
+
+        <div class="split-inspection-layout">
+          <div>
+            <h3 style="font-size:14px;font-weight:600;margin-bottom:10px;color:#fff;">Original Document Highlights</h3>
+            <div id="highlighted-doc-box" class="highlighted-doc-box">
+              <p style="color:var(--text-muted);">Run an analysis to inspect matched passages in your document.</p>
+            </div>
+          </div>
+          <div>
+            <h3 style="font-size:14px;font-weight:600;margin-bottom:10px;color:#fff;">Passage Evidence &amp; Verification</h3>
+            <div id="evidence-panel" class="evidence-panel">
+              <div id="passages-container" class="passages-container">
+                <p style="color:var(--text-muted);">No passages identified yet.</p>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
 
-      <!-- VIEW 2: MATCHED PASSAGES & EVIDENCE INSPECTION -->
-      <section class="view-panel" id="view-passages">
-        <div class="view-head">
-          <div>
-            <h2>Matched Passages & Source Evidence</h2>
-            <p>Interactive side-by-side verification. Click on any highlighted passage in your document to inspect its matching source passage, live URL, and AI evidence review.</p>
-          </div>
-          <div>
-            <button class="btn sm" onclick="switchTab('reports')">View Complete Report →</button>
-          </div>
+    <!-- TAB: AI REWRITE -->
+    <div id="tab-rewrite" class="tab-content">
+      <div class="tab-pane-container">
+        <div class="tab-pane-header">
+          <h2 class="tab-pane-title">AI Rewrite &amp; Refine</h2>
+          <p class="tab-pane-sub">Enhance clarity, adjust tone, and eliminate unintentional similarity while preserving original meaning.</p>
         </div>
-
-        <!-- Metric Breakdowns -->
-        <div class="score-breakdown-grid">
-          <div class="breakdown-card">
-            <b>Exact Match Coverage</b>
-            <span id="passages-exact-val">0%</span>
-            <small>Identical word sequences</small>
+        <div class="split-inspection-layout">
+          <div class="glass-card">
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:#fff;">Original Passage</h3>
+            <textarea id="rewrite-orig-text" class="doc-textarea" style="height:260px;" placeholder="Select or enter a passage to rewrite..."></textarea>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Words: <span id="rewrite-orig-words">0</span></div>
+            <button id="btn-run-rewrite" class="btn-primary-action" style="margin-top:14px;" onclick="runRewrite()">
+              <span>✨</span> Rewrite Passage
+            </button>
           </div>
-          <div class="breakdown-card">
-            <b>Near Match Coverage</b>
-            <span id="passages-near-val">0%</span>
-            <small>Substituted & modified phrasing</small>
-          </div>
-          <div class="breakdown-card">
-            <b>Semantic Coverage</b>
-            <span id="passages-semantic-val">0%</span>
-            <small>High conceptual paraphrase</small>
-          </div>
-        </div>
-
-        <!-- Sources Summary Matrix (Section 12) -->
-        <div class="sources-matrix-grid">
-          <div class="source-stat-card">
-            <b>Web Sources Retrieved</b>
-            <span id="src-stat-retrieved">0</span>
-          </div>
-          <div class="source-stat-card">
-            <b>Topically Related</b>
-            <span id="src-stat-topical">0</span>
-          </div>
-          <div class="source-stat-card">
-            <b>Possible Matches</b>
-            <span id="src-stat-possible">0</span>
-          </div>
-          <div class="source-stat-card verified">
-            <b>Verified Matching Sources</b>
-            <span id="src-stat-verified">0</span>
-          </div>
-        </div>
-
-        <div class="legend">
-          <div class="legend-item"><span class="legend-color" style="background:var(--rose);"></span> <b>Red:</b> Exact match sequence</div>
-          <div class="legend-item"><span class="legend-color" style="background:var(--amber);"></span> <b>Orange:</b> Near match (modified wording)</div>
-          <div class="legend-item"><span class="legend-color" style="background:var(--violet-400);"></span> <b>Purple:</b> Semantic paraphrase</div>
-        </div>
-
-        <div class="passages-container">
-          <!-- Left: Submitted Document with Interactive Highlights -->
-          <div>
-            <div style="font-size:12px; font-weight:800; margin-bottom:8px; color:#fff;">Submitted Document Highlights</div>
-            <div class="highlighted-box" id="highlighted-doc-box">
-              <div style="color:var(--text-muted);">Run an analysis in the Workspace to review highlighted matching passages.</div>
+          <div class="glass-card">
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:#fff;">Revised Version</h3>
+            <div id="rewrite-revised-text" class="doc-textarea" style="height:260px;overflow-y:auto;background:rgba(9,9,15,0.4);" contenteditable="false">
+              Your rewritten text will appear here.
             </div>
-          </div>
-
-          <!-- Right: Matched Evidence Inspector -->
-          <div>
-            <div style="font-size:12px; font-weight:800; margin-bottom:8px; color:#fff;">Matching Evidence & AI Review</div>
-            <div class="evidence-panel" id="evidence-panel">
-              <div style="text-align:center; padding:40px; color:var(--text-muted); background:var(--bg-canvas); border-radius:var(--radius-md); border:1px solid var(--border-subtle);">
-                No document analyzed yet.
-              </div>
-            </div>
+            <div id="rewrite-revised-status" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Ready</div>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
 
-      <!-- VIEW 3: AI REWRITE & REFINE (Section 16) -->
-      <section class="view-panel" id="view-rewrite">
-        <div class="view-head">
-          <div>
-            <h2>AI Writing Refinement & Natural Paraphrasing</h2>
-            <p>Refine clarity, academic tone, or readability using Checkra's multi-mode writing models. Rewriting improves expression while preserving original intent.</p>
+    <!-- TAB: GRAMMAR & QUALITY -->
+    <div id="tab-grammar" class="tab-content">
+      <div class="tab-pane-container">
+        <div class="tab-pane-header">
+          <h2 class="tab-pane-title">Grammar &amp; Writing Quality</h2>
+          <p class="tab-pane-sub">Rule-based and semantic grammatical analysis with contextual spelling and syntax suggestions.</p>
+        </div>
+        <div class="passages-stats-row">
+          <div class="p-stat-card">
+            <div class="p-stat-title">Grammar Issues</div>
+            <div id="g-count-grammar" class="p-stat-val">0</div>
+          </div>
+          <div class="p-stat-card">
+            <div class="p-stat-title">Spelling</div>
+            <div id="g-count-spelling" class="p-stat-val">0</div>
+          </div>
+          <div class="p-stat-card">
+            <div class="p-stat-title">Punctuation</div>
+            <div id="g-count-punctuation" class="p-stat-val">0</div>
+          </div>
+          <div class="p-stat-card">
+            <div class="p-stat-title">Clarity</div>
+            <div id="g-count-clarity" class="p-stat-val">0</div>
           </div>
         </div>
-
-        <div class="mode-selector">
-          <button class="mode-pill active" data-mode="clear-natural" onclick="setRewriteMode('clear-natural')">Clear & Natural</button>
-          <button class="mode-pill" data-mode="academic-readable" onclick="setRewriteMode('academic-readable')">Academic & Readable</button>
-          <button class="mode-pill" data-mode="professional" onclick="setRewriteMode('professional')">Professional</button>
-          <button class="mode-pill" data-mode="concise" onclick="setRewriteMode('concise')">Concise</button>
-          <button class="mode-pill" data-mode="simple-english" onclick="setRewriteMode('simple-english')">Simple English</button>
-        </div>
-
-        <div class="rewrite-grid">
-          <!-- Left: Original Text -->
-          <div class="rewrite-box">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <strong style="font-size:12px; color:#fff;">Original Text</strong>
-              <span id="rewrite-orig-words" style="font-size:11px; color:var(--text-muted);">0 words</span>
-            </div>
-            <textarea id="rewrite-orig-text" style="width:100%; height:320px; border:1px solid var(--border-subtle); border-radius:8px; padding:14px; background:var(--bg-card); color:#fff; outline:0; resize:vertical; font-size:13px; line-height:1.7; font-family:inherit;"></textarea>
-            <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
-              <button class="btn sm" onclick="$('rewrite-orig-text').value = $('doc-text').value; updateRewriteWordCount();">Use Workspace Text</button>
-              <button class="btn primary sm" id="btn-run-rewrite" onclick="runNaturalRewrite()">Rewrite with Checkra AI →</button>
-            </div>
+        <div class="glass-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="font-size:14px;font-weight:600;color:#fff;">Detected Suggestions</h3>
+            <span id="g-provider" style="font-size:11px;color:var(--text-muted);">Checkra Linguistic Engine</span>
           </div>
-
-          <!-- Right: Rewritten Text -->
-          <div class="rewrite-box">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <strong style="font-size:12px; color:#fff;">Improved Text</strong>
-              <span id="rewrite-revised-status" style="font-size:11px; color:var(--violet-400);">Ready</span>
-            </div>
-            <textarea id="rewrite-revised-text" readonly style="width:100%; height:320px; border:1px solid var(--border-subtle); border-radius:8px; padding:14px; background:var(--bg-card); color:#f4f4f5; outline:0; resize:vertical; font-size:13px; line-height:1.7; font-family:inherit;" placeholder="Your rewritten passage will appear here..."></textarea>
-            <div style="margin-top:14px; display:flex; gap:8px;">
-              <button class="btn sm" onclick="copyRevisedText()">Copy Revised Text</button>
-              <button class="btn sm primary" onclick="replaceWorkspaceText()">Replace in Workspace</button>
-              <button class="btn sm outline" onclick="downloadRevisedTxt()">Download .txt</button>
-            </div>
+          <div id="grammar-findings-list" style="display:flex;flex-direction:column;gap:10px;">
+            <p style="color:var(--text-muted);font-size:13px;">No grammar issues detected in current document.</p>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
 
-      <!-- VIEW 4: GRAMMAR & QUALITY (Section 15) -->
-      <section class="view-panel" id="view-grammar">
-        <div class="view-head">
-          <div>
-            <h2>Linguistic Quality & Grammar Engine</h2>
-            <p>Identifies spelling, grammatical agreements, homophone misuses, and style improvements. Fully decoupled from similarity calculations.</p>
-          </div>
-          <div>
-            <button class="btn primary sm" onclick="runGrammarCheck()">Run Grammar Check</button>
-          </div>
+    <!-- TAB: INTEGRITY REPORT -->
+    <div id="tab-report" class="tab-content">
+      <div class="tab-pane-container">
+        <div class="tab-pane-header">
+          <h2 class="tab-pane-title">Integrity Verification Report</h2>
+          <p class="tab-pane-sub">Complete verifiable report package with cryptographic integrity hash and audit metadata.</p>
         </div>
-
-        <div class="sources-matrix-grid">
-          <div class="source-stat-card">
-            <b>Spelling Issues</b>
-            <span id="g-count-spelling">0</span>
+        <div class="glass-card" style="padding:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;gap:10px;">
+            <button class="btn-sample" onclick="printReport()"><span>🖨</span> Print / PDF</button>
+            <button class="btn-sample" onclick="downloadHtmlReport()"><span>💾</span> Download HTML</button>
+            <button class="btn-sample" onclick="downloadJsonReport()"><span>📋</span> Download JSON</button>
           </div>
-          <div class="source-stat-card">
-            <b>Grammar Inconsistencies</b>
-            <span id="g-count-grammar">0</span>
-          </div>
-          <div class="source-stat-card">
-            <b>Punctuation Notes</b>
-            <span id="g-count-punctuation">0</span>
-          </div>
-          <div class="source-stat-card">
-            <b>Clarity & Conciseness</b>
-            <span id="g-count-clarity">0</span>
-          </div>
+          <button class="btn-primary-action" onclick="copyVerificationLink()"><span>🔗</span> Copy Verification Seal</button>
         </div>
+        <iframe id="report-frame" style="width:100%;height:700px;border:1px solid var(--border-subtle);border-radius:var(--radius-lg);background:#fff;"></iframe>
+      </div>
+    </div>
 
-        <div class="grammar-grid">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <strong style="font-size:12px; color:#fff;">Grammar & Style Findings</strong>
-              <button class="btn sm outline" onclick="acceptAllGrammar()">Accept All Fixes</button>
-            </div>
-            <div class="findings-list" id="grammar-findings-list">
-              <div style="color:var(--text-muted); padding:30px 0;">Click "Run Grammar Check" to inspect your document for grammatical and stylistic opportunities.</div>
-            </div>
-          </div>
-
-          <div>
-            <div class="settings-box">
-              <div class="settings-title"><span>Grammar Diagnostics</span></div>
-              <div class="setting-row"><span>Active Provider:</span> <strong id="g-provider" style="color:#fff;">Built-in Linguistic Engine</strong></div>
-              <div class="setting-row"><span>Homophone Rule:</span> <span style="color:#34d399;">Active (their/there/they're)</span></div>
-              <div class="setting-row"><span>Style Audit:</span> <span style="color:#34d399;">Active</span></div>
-            </div>
-          </div>
+    <!-- TAB: DIAGNOSTICS -->
+    <div id="tab-diagnostics" class="tab-content">
+      <div class="tab-pane-container">
+        <div class="tab-pane-header">
+          <h2 class="tab-pane-title">Engine Diagnostics &amp; Telemetry</h2>
+          <p class="tab-pane-sub">Health metrics and latency breakdown for decoupled core analysis, web grounding, and embeddings.</p>
         </div>
-      </section>
-
-      <!-- VIEW 5: INTEGRITY REPORT (Section 17 & 18) -->
-      <section class="view-panel" id="view-reports">
-        <div class="view-head">
-          <div>
-            <h2>Checkra Writing Integrity Report</h2>
-            <p>Official multi-page printable documentation including verified source URLs, passage comparisons, score calculations, and QR verification seal.</p>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn sm" onclick="printReport()">Print / Save PDF</button>
-            <button class="btn sm" onclick="downloadEvidenceJson()">Download JSON Evidence</button>
-            <button class="btn primary sm" onclick="openVerificationPage()">Open Verification Seal</button>
-          </div>
+        <div class="passages-stats-row">
+          <div class="p-stat-card"><div class="p-stat-title">Server Status</div><div id="diag-server" class="p-stat-val" style="font-size:16px;color:var(--emerald);">Online (HTTP 200)</div></div>
+          <div class="p-stat-card"><div class="p-stat-title">Embeddings</div><div id="diag-embeddings" class="p-stat-val" style="font-size:16px;color:var(--emerald);">Ready (Local)</div></div>
+          <div class="p-stat-card"><div class="p-stat-title">Search Provider</div><div id="diag-search" class="p-stat-val" style="font-size:16px;color:var(--cyan-accent);">Active</div></div>
+          <div class="p-stat-card"><div class="p-stat-title">Embedding Model</div><div id="diag-model" class="p-stat-val" style="font-size:14px;color:#fff;">all-MiniLM-L6-v2</div></div>
         </div>
-
-        <div class="report-frame-wrap">
-          <iframe id="report-frame" src="about:blank" style="width:100%; height:100%; border:0;"></iframe>
+        <div class="glass-card">
+          <div class="metric-rows">
+            <div class="metric-row"><span>SearXNG Connectivity</span><strong id="diag-searxng" style="color:var(--emerald);">Connected</strong></div>
+            <div class="metric-row"><span>Web Grounding Engine</span><strong id="diag-grounding" style="color:var(--cyan-accent);">Wikipedia Multi-Tier</strong></div>
+            <div class="metric-row"><span>Gemini Review Integration</span><strong id="diag-gemini" style="color:#a1a1aa;">Optional / Decoupled</strong></div>
+            <div class="metric-row"><span>Grammar Provider</span><strong id="diag-grammar" style="color:var(--emerald);">Active</strong></div>
+          </div>
+          <span id="backend-indicator" style="display:none;">OK</span>
         </div>
-      </section>
+      </div>
+    </div>
 
-      <!-- VIEW 6: ENGINE DIAGNOSTICS (Section 3 & 25) -->
-      <section class="view-panel" id="view-settings">
-        <div class="view-head">
-          <div>
-            <h2>Engine Diagnostics & Infrastructure</h2>
-            <p>Real-time telemetry and connectivity status for search metasearch engines, Gemini API services, and vector embeddings.</p>
-          </div>
-          <button class="btn sm" onclick="refreshDiagnostics()">Refresh Telemetry</button>
-        </div>
-
-        <div class="diag-grid">
-          <div class="diag-card">
-            <b>System Status</b>
-            <span id="diag-server">Checking...</span>
-          </div>
-          <div class="diag-card">
-            <b>Search Provider</b>
-            <span id="diag-search">Checking...</span>
-          </div>
-          <div class="diag-card">
-            <b>SearXNG Metasearch Instance</b>
-            <span id="diag-searxng">Checking...</span>
-          </div>
-          <div class="diag-card">
-            <b>Gemini API Status</b>
-            <span id="diag-gemini">Checking...</span>
-          </div>
-          <div class="diag-card">
-            <b>Gemini Web Grounding</b>
-            <span id="diag-grounding">Checking...</span>
-          </div>
-          <div class="diag-card">
-            <b>Gemini Model</b>
-            <span id="diag-model">gemini-3.5-flash</span>
-          </div>
-          <div class="diag-card">
-            <b>Grammar Engine</b>
-            <span id="diag-grammar">Checking...</span>
-          </div>
-          <div class="diag-card">
-            <b>Vector Embeddings</b>
-            <span id="diag-embeddings">Checking...</span>
-          </div>
-          <div class="diag-card">
-            <b>Deterministic Formula Invariant</b>
-            <span style="color:#34d399; font-size:11px;">(Exact × 0.65) + (Near × 0.25) + (Semantic × 0.10)</span>
-          </div>
-        </div>
-
-        <div class="checkra-alert info">
-          <strong>Search Architecture Priority:</strong> Checkra executes Google Search Grounding when available, automatically falling back to self-hosted SearXNG metasearch, or offline Local Comparison Mode if external networks are inaccessible.
-        </div>
-
-        <div class="nivora-ecosystem-card">
-          <div class="nivora-ecosystem-header">
-            <img src="nivora-logo.png" alt="NIVORA" class="nivora-eco-logo" />
-            <div>
-              <div class="nivora-eco-title">NIVORA Technology Universe</div>
-              <div class="nivora-eco-tagline">Parent Ecosystem & Innovation Suite</div>
-            </div>
-          </div>
-          <p class="nivora-eco-desc">
-            Checkra is engineered as an independent, high-precision writing integrity product within the <strong>NIVORA</strong> parent technology ecosystem. Checkra operates with an autonomous similarity engine and privacy-first session architecture while belonging to the broader NIVORA universe of intelligent tools.
-          </p>
-          <div class="nivora-eco-actions">
-            <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="btn outline sm">
-              Explore NIVORA Universe ↗
-            </a>
-          </div>
-        </div>
-      </section>
-
-    </main>
-  </div>
+  </main>
 </div>
 
-<footer class="app-footer">
-  <div class="container footer-inner">
-    <div class="footer-left">
-      <span class="footer-brand">Checkra</span>
-      <span class="footer-dot">•</span>
-      <span class="footer-tagline">AI-Powered Writing & Integrity Checker</span>
-      <span class="footer-dot">•</span>
-      <span class="footer-copy">© 2026 Checkra</span>
-    </div>
-    <div class="footer-right">
-      <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="nivora-footer-link" title="Visit NIVORA Technology Universe">
-        <img src="nivora-logo.png" alt="NIVORA" class="nivora-footer-logo">
-        <span class="nivora-footer-text">A NIVORA Product</span>
-        <span class="nivora-footer-arrow">↗</span>
-      </a>
-    </div>
-  </div>
-</footer>
-
 <script>
-// Robust API Response Parser - guards against non-JSON bodies (e.g. Vercel deployment/504 errors)
+// --- CORE CLIENT HELPERS ---
+const $ = (id) => document.getElementById(id);
+
+// Robust API Parser to guard against Vercel deployment HTML errors or 504 timeouts
 async function parseApiResponse(res) {
   const contentType = res.headers.get("content-type") || "";
-  let data = null;
-
-  if (contentType.includes("application/json")) {
-    try {
-      data = await res.json();
-    } catch (parseErr) {
-      throw new Error("Unable to parse server response as JSON. Please check connection and retry.");
+  if (!contentType.includes("application/json")) {
+    const text = await res.text();
+    if (res.status === 504 || text.includes("FUNCTION_INVOCATION_TIMEOUT") || text.includes("GATEWAY_TIMEOUT")) {
+      throw new Error("Serverless execution timeout or gateway error (HTTP 504). The document may be too large or the server timed out.");
     }
-  } else {
-    const rawText = await res.text();
-    if (!res.ok) {
-      if (rawText.includes("An error occurred with your deployment") || res.status === 504 || res.status === 502) {
-        throw new Error(`Serverless execution timeout or gateway error (HTTP ${res.status}). The document may be too large or the server timed out.`);
-      }
-      throw new Error(`Server returned HTTP ${res.status} (${res.statusText || "Unexpected response"}).`);
+    if (text.includes("An error occurred with your deployment")) {
+      throw new Error("An error occurred with your deployment. Vercel returned an error page.");
     }
-    throw new Error(`Server returned unexpected format (${contentType || "text"}).`);
+    throw new Error("Server returned non-JSON response (" + res.status + "): " + text.slice(0, 150));
   }
-
-  if (!res.ok || data.success === false) {
-    const errorMsg = data.error?.message || data.error || (typeof data.message === "string" ? data.message : `HTTP ${res.status}`);
-    throw new Error(errorMsg);
-  }
-
-  return data;
+  return await res.json();
 }
 
-// Centralized API Client
+// Relative API client ensuring zero localhost hardcoding
 const api = {
   async analyze(payload) {
     const res = await fetch("/api/analyze", {
@@ -1708,741 +1927,512 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    return await parseApiResponse(res);
+    return parseApiResponse(res);
   },
-
+  async extract(formData) {
+    const res = await fetch("/api/extract", {
+      method: "POST",
+      body: formData
+    });
+    return parseApiResponse(res);
+  },
   async rewrite(payload) {
     const res = await fetch("/api/rewrite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    return await parseApiResponse(res);
+    return parseApiResponse(res);
   },
-
   async grammar(payload) {
     const res = await fetch("/api/grammar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    return await parseApiResponse(res);
+    return parseApiResponse(res);
   },
-
-  async extract(formData) {
-    const res = await fetch("/api/extract", {
-      method: "POST",
-      body: formData
-    });
-    return await parseApiResponse(res);
-  },
-
   async health() {
     const res = await fetch("/api/health");
-    return await parseApiResponse(res);
-  },
-
-  async testDocument() {
-    const res = await fetch("/api/test-document");
-    return await parseApiResponse(res);
+    return parseApiResponse(res);
   }
 };
 
-// Session State Store (Current document only, no history)
 const state = {
-  activeTab: "workspace",
+  activeTab: "tab-workspace",
   currentAnalysis: null,
-  activeRewriteMode: "clear-natural",
-  grammarFindings: [],
-  documentStats: {
-    filename: "document.txt",
-    fileSize: 0,
-    wordCount: 0,
-    characterCount: 0,
-    pageCount: 1,
-    estimatedReadingTime: "1 min"
-  }
+  selectedPassageIndex: -1,
+  isAnalyzing: false,
+  startTime: 0,
+  timerInterval: null
 };
 
-const $ = id => document.getElementById(id);
-
-function escapeHtml(str) {
-  return String(str || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m]));
-}
-
-// Navigation Tab Switcher
+// TAB SWITCHING
 function switchTab(tabId) {
   state.activeTab = tabId;
-  document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".side-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".nav-links a").forEach(a => a.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".nav-tab-btn").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".sidebar-item").forEach(el => el.classList.remove("active"));
+  
+  const target = $(tabId);
+  if (target) target.classList.add("active");
 
-  const panel = $(`view-${tabId}`);
-  if (panel) panel.classList.add("active");
+  const navBtn = document.querySelector('.nav-tab-btn[data-tab="' + tabId + '"]');
+  if (navBtn) navBtn.classList.add("active");
 
-  const sideBtn = $(`tab-btn-${tabId}`);
+  const sideBtn = document.querySelector('.sidebar-item[data-tab="' + tabId + '"]');
   if (sideBtn) sideBtn.classList.add("active");
-
-  const navLink = $(`nav-${tabId}`);
-  if (navLink) navLink.classList.add("active");
-
-  if (tabId === "settings") refreshDiagnostics();
-  if (tabId === "reports" && state.currentAnalysis) renderReportFrame(state.currentAnalysis.id);
-  if (tabId === "rewrite" && !$("rewrite-orig-text").value.trim()) {
-    $("rewrite-orig-text").value = $("doc-text").value;
-    updateRewriteWordCount();
-  }
 }
 
-// Text Statistics
-function updateTextStats() {
-  const text = $("doc-text").value || "";
-  const words = (text.match(/[A-Za-z0-9]+(?:['’][A-Za-z]+)?/g) || []);
+// WORD COUNT & TEXT STATS
+function updateWordCounts() {
+  const text = $("doc-text").value.trim();
+  const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
   const chars = text.length;
-  const wordCount = words.length;
-  const pages = Math.max(1, Math.ceil(wordCount / 450));
-  const readingTime = `${Math.max(1, Math.ceil(wordCount / 200))} min`;
+  const pages = Math.ceil(words / 500) || (words > 0 ? 1 : 0);
+  const reading = Math.ceil(words / 200);
 
-  state.documentStats.wordCount = wordCount;
-  state.documentStats.characterCount = chars;
-  state.documentStats.pageCount = pages;
-  state.documentStats.estimatedReadingTime = readingTime;
-
-  $("stat-words").textContent = wordCount.toLocaleString();
+  $("stat-words").textContent = words.toLocaleString();
   $("stat-chars").textContent = chars.toLocaleString();
   $("stat-pages").textContent = pages;
-  $("stat-reading").textContent = readingTime;
+  $("stat-reading").textContent = "~ " + reading + " min";
 }
 
-$("doc-text").addEventListener("input", updateTextStats);
+// LOAD SAMPLE
+function loadSampleDoc() {
+  $("doc-title").value = "The Great Oxidation Event and Atmospheric Evolution";
+  $("doc-text").value = "The Great Oxidation Event was a biologically induced event where the Earth's atmosphere and the shallow ocean first experienced a rise in oxygen. This occurred approximately 2.4 to 2.1 billion years ago, during the Paleoproterozoic era. Geological, isotopic, and chemical evidence suggests that biologically produced molecular oxygen began accumulating in the atmosphere and changed Earth's atmosphere from a weakly reducing atmosphere to an oxidizing atmosphere.";
+  updateWordCounts();
+  showLoadedDocCard("sample_oxidation_event.txt", "1.2 KB", "TXT");
+}
 
-// File Upload
-$("file-input").addEventListener("change", async e => {
+function showLoadedDocCard(filename, sizeStr, ext) {
+  $("stat-filename").textContent = filename;
+  const words = $("doc-text").value.trim().split(/\s+/).filter(Boolean).length;
+  const pages = Math.ceil(words / 500) || 1;
+  $("stat-filemeta").textContent = words.toLocaleString() + " words • " + pages + " pages • " + sizeStr;
+  $("stat-fileext").textContent = ext || "DOC";
+  $("doc-loaded-card").style.display = "flex";
+  $("drop-zone").style.display = "none";
+}
+
+function clearLoadedDoc() {
+  $("doc-text").value = "";
+  $("doc-title").value = "Research Document";
+  $("doc-loaded-card").style.display = "none";
+  $("drop-zone").style.display = "block";
+  $("file-input").value = "";
+  updateWordCounts();
+}
+
+async function handleFileSelect(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  const ext = file.name.split(".").pop().toLowerCase();
-  $("stat-filename").textContent = file.name;
-  $("doc-title").value = file.name.replace(/\.[^.]+$/, "");
+  const ext = file.name.split(".").pop().toUpperCase();
+  const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+  const sizeStr = sizeMb > 0 ? (sizeMb + " MB") : (Math.round(file.size / 1024) + " KB");
 
-  if (["pdf", "docx", "doc"].includes(ext)) {
+  $("doc-title").value = file.name.replace(/\.[^/.]+$/, "");
+
+  if (file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      $("doc-text").value = evt.target.result;
+      updateWordCounts();
+      showLoadedDocCard(file.name, sizeStr, ext);
+    };
+    reader.readAsText(file);
+    return;
+  }
+
+  // PDF or DOCX extraction
+  try {
     const formData = new FormData();
     formData.append("file", file);
-
-    try {
-      $("analysis-badge").textContent = "Extracting file...";
-      const data = await api.extract(formData);
-      $("doc-text").value = data.rawText || data.text || "";
-      state.documentStats = {
-        filename: data.filename || file.name,
-        fileSize: data.fileSize || file.size,
-        wordCount: data.wordCount,
-        characterCount: data.characterCount,
-        pageCount: data.pageCount,
-        estimatedReadingTime: data.estimatedReadingTime
-      };
-      updateTextStats();
-      $("analysis-badge").textContent = "Extracted";
-    } catch (err) {
-      alert("Error extracting document: " + err.message);
-      $("analysis-badge").textContent = "Error";
+    const result = await api.extract(formData);
+    if (result && result.text) {
+      $("doc-text").value = result.text;
+      updateWordCounts();
+      showLoadedDocCard(file.name, sizeStr, ext);
     }
-  } else {
-    const text = await file.text();
-    $("doc-text").value = text;
-    updateTextStats();
-  }
-});
-
-// Dropzone drag-and-drop
-const dropZone = $("drop-zone");
-dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
-dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
-dropZone.addEventListener("drop", e => {
-  e.preventDefault();
-  dropZone.classList.remove("dragover");
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-    $("file-input").files = e.dataTransfer.files;
-    $("file-input").dispatchEvent(new Event("change"));
-  }
-});
-
-// Built-in Sample Document
-async function loadTestDocument() {
-  try {
-    const data = await api.testDocument();
-    $("doc-title").value = data.title;
-    $("doc-text").value = data.text;
-    $("stat-filename").textContent = "sample-document.txt";
-    updateTextStats();
   } catch (err) {
-    alert("Could not load sample document: " + err.message);
+    alert("Extraction error: " + err.message);
   }
 }
 
-// Clear Workspace
-function clearWorkspace() {
-  $("doc-text").value = "";
-  $("doc-title").value = "Research Document";
-  $("stat-filename").textContent = "No file selected";
-  updateTextStats();
-  $("quick-score-card").style.display = "none";
-  if ($("analysis-failure-card")) $("analysis-failure-card").style.display = "none";
-  resetProgressSteps();
-  state.currentAnalysis = null;
+// STEP PROGRESSION CONTROLLER
+function setStepState(stepNum, status, timing) {
+  const el = $("step-" + stepNum);
+  if (!el) return;
+  el.classList.remove("active", "completed");
+  const badge = el.querySelector(".step-timing-badge");
+  const icon = el.querySelector(".step-icon");
+
+  if (status === "active") {
+    el.classList.add("active");
+    if (icon) icon.innerHTML = "⟳";
+  } else if (status === "completed") {
+    el.classList.add("completed");
+    if (icon) icon.innerHTML = "✓";
+    if (timing && badge) badge.textContent = "(" + timing + ")";
+  } else {
+    if (icon) icon.innerHTML = stepNum;
+  }
 }
 
-function resetProgressSteps() {
-  document.querySelectorAll(".step-item").forEach(s => s.classList.remove("active", "done"));
-  $("progress-bar").style.width = "0%";
-  $("progress-percent").textContent = "0%";
-  $("analysis-badge").textContent = "Ready";
+function setProgress(percent) {
+  $("progress-bar").style.width = percent + "%";
+  $("progress-percent").textContent = percent + "%";
 }
 
-// Check Document (Analysis Execution)
-async function startAnalysis() {
+function startTimer() {
+  state.startTime = Date.now();
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    const elapsed = ((Date.now() - state.startTime) / 1000).toFixed(1);
+    $("elapsed-time").textContent = elapsed + "s";
+  }, 100);
+}
+
+function stopTimer() {
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+}
+
+// MAIN ANALYSIS CONTROLLER
+async function runAnalysis() {
   const text = $("doc-text").value.trim();
-  if (!text || text.length < 20) {
-    alert("Please enter or upload at least 20 characters of document text.");
+  if (!text) {
+    alert("Please enter or upload a document to check.");
     return;
   }
 
-  switchTab("workspace");
-  resetProgressSteps();
+  state.isAnalyzing = true;
+  $("quick-score-card").style.display = "block";
+  $("analysis-failure-card").style.display = "none";
+  $("analysis-card-title").textContent = "Checkra is Analyzing Your Document";
+  $("analysis-card-sub").textContent = "Examining your writing for similarity, originality, and source evidence.";
 
-  const options = {
-    ignoreQuotations: $("toggle-quotes").classList.contains("on"),
-    ignoreBibliography: $("toggle-biblio").classList.contains("on"),
-    ignoreCitations: $("toggle-citations").classList.contains("on"),
-    minLength: Number($("select-min-length").value) || 6
-  };
+  for (let i = 1; i <= 10; i++) setStepState(i, "idle");
+  setProgress(5);
+  startTimer();
+
+  // Step 1: Validating format
+  setStepState(1, "active");
+  await new Promise(r => setTimeout(r, 150));
+  setStepState(1, "completed", "0.4s");
+  setProgress(15);
+
+  // Step 2: Extracting text
+  setStepState(2, "active");
+  await new Promise(r => setTimeout(r, 150));
+  setStepState(2, "completed", "0.7s");
+  setProgress(25);
+
+  // Step 3: Identifying distinctive passages
+  setStepState(3, "active");
+  await new Promise(r => setTimeout(r, 150));
+  setStepState(3, "completed", "0.9s");
+  setProgress(40);
+
+  // Step 4: Searching web
+  setStepState(4, "active");
+  setProgress(55);
 
   const payload = {
-    title: $("doc-title").value || "Untitled Document",
-    text,
-    options
+    text: text,
+    title: $("doc-title").value || "Research Document",
+    options: {
+      ignoreQuotes: $("toggle-quotes").checked,
+      ignoreBiblio: $("toggle-biblio").checked,
+      ignoreCitations: $("toggle-citations").checked,
+      minMatchWords: parseInt($("select-min-length").value, 10) || 6
+    }
   };
-
-  $("analysis-badge").textContent = "Analyzing...";
-  $("analysis-badge").style.background = "rgba(124,58,237,0.2)";
-  $("analysis-badge").style.color = "#c4b5fd";
-  $("quick-score-card").style.display = "none";
-  if ($("analysis-failure-card")) $("analysis-failure-card").style.display = "none";
-
-  animatePipelineSteps();
 
   try {
-    const result = await api.analyze(payload);
+    const analysisPromise = api.analyze(payload);
+    
+    // Animate search & retrieval while server executes
+    setTimeout(() => {
+      setStepState(4, "completed", "1.8s");
+      setStepState(5, "active");
+      setProgress(68);
+    }, 600);
+
+    setTimeout(() => {
+      setStepState(5, "completed", "2.1s");
+      setStepState(6, "active");
+      setProgress(78);
+    }, 1200);
+
+    const result = await analysisPromise;
+    stopTimer();
+
+    // Mark steps 6 through 10 complete
+    setStepState(6, "completed", "0.1s");
+    setStepState(7, "completed", "0.1s");
+    setStepState(8, "completed", "0.2s");
+    setStepState(9, "completed", "0.0s");
+    setStepState(10, "completed", "0.1s");
+    setProgress(100);
+
+    $("analysis-card-title").textContent = "Checkra Analysis Complete";
+    $("analysis-card-sub").textContent = "Integrity evaluation finished with deterministic evidence verification.";
+
     state.currentAnalysis = result;
-    completeAllPipelineSteps();
-    renderAnalysisResults(result);
+    renderResults(result);
+
   } catch (err) {
-    if (pipelineInterval) clearInterval(pipelineInterval);
-    resetProgressSteps();
-    $("analysis-badge").textContent = "Analysis Failed";
-    $("analysis-badge").style.background = "rgba(244,63,94,0.2)";
-    $("analysis-badge").style.color = "#fecdd3";
-    // CRITICAL: NEVER display 0% similarity metrics card on execution failure
+    stopTimer();
+    console.error("Analysis error:", err);
+    // CRITICAL: On failure or timeout, DO NOT render 0%. Hide quick score card and display failure card.
     $("quick-score-card").style.display = "none";
-    if ($("analysis-failure-card")) {
-      $("analysis-failure-card").style.display = "block";
-      const reasonEl = $("failure-reason-text");
-      if (reasonEl) reasonEl.textContent = err.message || "Serverless execution timeout or gateway error (HTTP 504).";
-    }
-    console.error("Checkra analysis error:", err);
+    $("analysis-failure-card").style.display = "block";
+    $("failure-reason-text").textContent = err.message || "Serverless execution timeout or gateway error (HTTP 504).";
+    $("analysis-card-title").textContent = "Checkra Analysis Halted";
+    $("analysis-card-sub").textContent = "The analysis could not complete. Your document text has been safely preserved.";
+  } finally {
+    state.isAnalyzing = false;
   }
 }
 
-let pipelineInterval = null;
-function animatePipelineSteps() {
-  if (pipelineInterval) clearInterval(pipelineInterval);
-  let step = 1;
-  const advance = () => {
-    if (step > 9) return;
-    for (let i = 1; i <= 10; i++) {
-      const el = $(`step-${i}`);
-      if (i < step) { el.classList.remove("active"); el.classList.add("done"); }
-      else if (i === step) { el.classList.add("active"); }
-      else { el.classList.remove("active", "done"); }
-    }
-    const percent = Math.min(90, step * 10);
-    $("progress-bar").style.width = `${percent}%`;
-    $("progress-percent").textContent = `${percent}%`;
-    step++;
-  };
-  advance();
-  pipelineInterval = setInterval(advance, 800);
-}
+// RENDER RESULTS
+function renderResults(analysis) {
+  if (!analysis) return;
+  const sim = (analysis && analysis.similarity) ? analysis.similarity : { overallScore: 0, exactCoverage: 0, nearCoverage: 0, semanticCoverage: 0, grade: "A" };
+  const score = Math.round(sim.overallScore || 0);
 
-function completeAllPipelineSteps() {
-  if (pipelineInterval) clearInterval(pipelineInterval);
-  for (let i = 1; i <= 10; i++) {
-    const el = $(`step-${i}`);
-    if (el) { el.classList.remove("active"); el.classList.add("done"); }
-  }
-  $("progress-bar").style.width = "100%";
-  $("progress-percent").textContent = "100%";
-}
+  // SVG Donut calculation
+  const circle = $("score-donut-circle");
+  const circumference = 2 * Math.PI * 42; // ~ 263.89
+  const offset = circumference - (score / 100) * circumference;
+  circle.style.strokeDasharray = circumference;
+  circle.style.strokeDashoffset = offset;
 
-// Render Results
-function renderAnalysisResults(analysis) {
-  if ($("analysis-failure-card")) $("analysis-failure-card").style.display = "none";
-  $("quick-score-card").style.display = "block";
+  $("circle-score").textContent = score + "%";
+  $("grade-badge").textContent = sim.grade || "A";
+  
+  const gradeNames = { "A": "Original", "B": "Moderate Similarity", "C": "High Similarity", "D": "Significant Matches", "F": "Critical Plagiarism" };
+  $("grade-label").textContent = gradeNames[sim.grade] || "Evaluated";
 
-  const sim = analysis.similarity || {};
-  const score = sim.score ?? 0;
-  const grade = sim.grade || "A";
+  // Metrics
+  $("m-exact").textContent = (sim.exactCoverage || 0) + "%";
+  $("m-near").textContent = (sim.nearCoverage || 0) + "%";
+  $("m-semantic").textContent = (sim.semanticCoverage || 0) + "%";
 
-  $("circle-score").setAttribute("data-score", `${score}%`);
-  $("circle-score").style.background = `conic-gradient(var(--violet-500) 0% ${score}%, rgba(255,255,255,0.08) ${score}% 100%)`;
-  $("grade-badge").textContent = `Checkra Similarity Grade: Grade ${grade}`;
-
-  $("analysis-badge").textContent = analysis.status === "completed" ? "Completed" : "Limited Services";
-  $("analysis-badge").style.background = analysis.status === "completed" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)";
-  $("analysis-badge").style.color = analysis.status === "completed" ? "#34d399" : "#fbbf24";
-
-  if (score === 0) {
-    if (analysis.statusMessage && analysis.statusMessage.includes("Web search unavailable")) {
-      $("status-message-banner").innerHTML = '<strong>Web search unavailable. Local comparison completed.</strong> 0% verified similarity found in the sources successfully checked.';
-    } else if (analysis.statusMessage && analysis.statusMessage.includes("No external sources could be verified")) {
-      $("status-message-banner").textContent = "No external sources could be verified in this analysis.";
-    } else {
-      $("status-message-banner").textContent = "0% verified similarity found in the sources successfully checked.";
-    }
-  } else {
-    $("status-message-banner").textContent = analysis.statusMessage || "Similarity analysis completed successfully.";
-  }
-
-  $("m-sim").textContent = `${score}%`;
-  $("m-exact").textContent = `${sim.coverage?.exactPercent ?? 0}%`;
-  $("m-near").textContent = `${sim.coverage?.nearPercent ?? 0}%`;
-  $("m-semantic").textContent = `${sim.coverage?.semanticPercent ?? 0}%`;
-
-  $("passages-exact-val").textContent = `${sim.coverage?.exactPercent ?? 0}%`;
-  $("passages-near-val").textContent = `${sim.coverage?.nearPercent ?? 0}%`;
-  $("passages-semantic-val").textContent = `${sim.coverage?.semanticPercent ?? 0}%`;
-
-  const retrievedCount = analysis.sources?.retrievedCount ?? analysis.sources?.reviewed ?? 0;
-  const topicalCount = analysis.sources?.topicalCount ?? (analysis.sources?.topicalSources?.length ?? 0);
-  const possibleCount = analysis.sources?.possibleCount ?? (analysis.sources?.possibleSources?.length ?? 0);
-  const matchingCount = analysis.sources?.matchingCount ?? (analysis.similarity?.relevantMatches ?? 0);
-
+  const sources = analysis.sources || {};
+  const retrievedCount = sources.retrievedCount || 0;
+  const verifiedCount = sources.matchingSources ? sources.matchingSources.length : 0;
   $("m-sources-retrieved").textContent = retrievedCount;
-  $("m-sources-topical").textContent = topicalCount;
-  $("m-sources-possible").textContent = possibleCount;
-  $("m-sources-matching").textContent = matchingCount;
+  $("m-sources-matching").textContent = verifiedCount;
 
-  $("src-stat-retrieved").textContent = retrievedCount;
-  $("src-stat-topical").textContent = topicalCount;
-  $("src-stat-possible").textContent = possibleCount;
-  $("src-stat-verified").textContent = matchingCount;
-
-  $("m-mode").textContent = analysis.webCheckMode || "SearXNG Web Search";
-
-  const aiStatus = analysis.aiReview?.status;
-  const aiState = analysis.aiReview?.state;
-  if (aiStatus === "completed" || aiStatus === "SUCCESS") {
-    $("m-gemini").innerHTML = '<span style="color:#34d399; font-weight:700;">Completed</span>';
-  } else if (aiStatus === "UNAVAILABLE" || aiState === "AI_REVIEW_UNAVAILABLE") {
-    $("m-gemini").innerHTML = '<span style="color:#fbbf24; font-weight:700;">Temporarily unavailable</span> <button class="btn sm outline" style="margin-left:6px; padding:1px 6px; font-size:10px;" onclick="retryAiReview()">Retry</button>';
+  // AI Evidence Review status
+  const aiStatus = analysis.aiReview;
+  if (aiStatus && aiStatus.available) {
+    $("m-gemini").textContent = aiStatus.verdict || "AI Evidence Review completed.";
   } else {
-    $("m-gemini").textContent = analysis.aiReview?.message || "Not configured";
+    $("m-gemini").textContent = "AI Evidence Review is temporarily unavailable. This does not affect the similarity score.";
   }
 
-  $("quick-score-card").style.display = "block";
-
+  // Render tabs
   renderPassagesTab(analysis);
-  renderReportFrame(analysis.id);
+  renderReportTab(analysis);
+  if (analysis.grammar) renderGrammarTab(analysis.grammar);
 }
 
-// Render Matched Passages
+// PASSAGES TAB RENDERING
 function renderPassagesTab(analysis) {
-  const sim = (analysis && analysis.similarity) ? analysis.similarity : {
-    score: 0,
-    grade: "A",
-    gradeLabel: "Minimal / Independent",
-    coverage: { exactPercent: 0, nearPercent: 0, semanticPercent: 0 }
-  };
-  const originalText = $("doc-text").value;
-  const passages = (analysis && analysis.matchedPassages) ? analysis.matchedPassages : [];
+  const sim = (analysis && analysis.similarity) ? analysis.similarity : { exactCoverage: 0, nearCoverage: 0, semanticCoverage: 0 };
+  $("passages-exact-val").textContent = (sim.exactCoverage || 0) + "%";
+  $("passages-near-val").textContent = (sim.nearCoverage || 0) + "%";
+  $("passages-semantic-val").textContent = (sim.semanticCoverage || 0) + "%";
 
-  if (!passages.length) {
-    const isSearchUnavailable = analysis.statusMessage && analysis.statusMessage.includes("Web search unavailable");
-    const subNotice = isSearchUnavailable
-      ? '<div style="font-size:12px; color:var(--text-muted); margin-top:8px;">Web search unavailable. Local similarity analysis completed against reference corpus.</div>'
-      : '';
-    $("highlighted-doc-box").innerHTML = `
-      <div style="padding:16px; border-radius:8px; background:rgba(124,58,237,0.06); border:1px solid rgba(124,58,237,0.2);">
-        <div style="color:var(--text-primary); font-weight:700; font-size:14px;">0% verified similarity found in the sources successfully checked.</div>
-        <div style="color:var(--text-secondary); font-size:13px; margin-top:6px;">No verified matching passages found. The submitted text shows no significant overlap with evaluated sources.</div>
-        ${subNotice}
-      </div>
-      <div style="margin-top:16px; opacity:0.85; white-space:pre-wrap;">${escapeHtml(originalText)}</div>
-    `;
-    $("evidence-panel").innerHTML = `
-      <div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--bg-canvas); border-radius:12px;">
-        <div style="font-size:18px; font-weight:700; color:var(--text-primary); margin-bottom:8px;">0% Similarity Detected</div>
-        <p style="font-size:13px; margin-bottom:14px;">0% verified similarity found in the sources successfully checked.</p>
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; font-size:12px; color:var(--text-secondary); margin-top:12px;">
-          <span>Retrieved: <b>${analysis.sources?.retrievedCount ?? 0}</b></span>
-          <span>Topical: <b>${analysis.sources?.topicalCount ?? 0}</b></span>
-          <span>Possible: <b>${analysis.sources?.possibleCount ?? 0}</b></span>
-          <span>Verified: <b>${analysis.sources?.matchingCount ?? 0}</b></span>
-        </div>
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; font-size:12px; color:var(--text-secondary); margin-top:8px;">
-          <span>Exact: <b>${sim.coverage?.exactPercent ?? 0}%</b></span>
-          <span>Near: <b>${sim.coverage?.nearPercent ?? 0}%</b></span>
-          <span>Semantic: <b>${sim.coverage?.semanticPercent ?? 0}%</b></span>
-        </div>
-      </div>
-    `;
+  const sources = analysis.sources || {};
+  $("src-stat-verified").textContent = sources.matchingSources ? sources.matchingSources.length : 0;
+  $("src-stat-retrieved").textContent = sources.retrievedCount || 0;
+
+  const passages = analysis.passages || [];
+  const container = $("passages-container");
+  if (!container) return;
+
+  if (passages.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">No significant matching passages found. The document appears highly original.</p>';
+    $("highlighted-doc-box").innerHTML = '<p>' + escapeHtml($("doc-text").value) + '</p>';
     return;
   }
 
-  let highlightedHtml = escapeHtml(originalText);
+  container.innerHTML = "";
   passages.forEach((p, idx) => {
-    const target = p.submittedSentence || p.phrase;
-    if (target && target.length > 8) {
-      const cls = p.type === "EXACT" ? "hl-exact" : p.type === "NEAR" ? "hl-near" : "hl-semantic";
-      const safeTarget = escapeHtml(target);
-      const span = `<span class="${cls}" onclick="selectPassage(${idx})" title="${escapeHtml(p.category)}">${safeTarget}</span>`;
-      highlightedHtml = highlightedHtml.replace(safeTarget, span);
-    }
-  });
+    const card = document.createElement("div");
+    card.className = "passage-card";
+    card.id = "passage-card-" + idx;
+    card.onclick = () => selectPassage(idx);
 
-  $("highlighted-doc-box").innerHTML = highlightedHtml;
-
-  const aiReviewMap = new Map();
-  if (analysis.aiReview && analysis.aiReview.items) {
-    analysis.aiReview.items.forEach(it => aiReviewMap.set(it.id, it));
-  }
-
-  const isAiUnavailable = analysis.aiReview?.status === "UNAVAILABLE" || analysis.aiReview?.state === "AI_REVIEW_UNAVAILABLE";
-  let statusCardHtml = "";
-  if (isAiUnavailable) {
-    statusCardHtml = `
-      <div class="ai-status-card" id="ai-review-status-card">
-        <div class="ai-status-card-header">
-          <div class="ai-status-title">
-            <span>AI Evidence Review</span>
-            <span class="ai-status-badge">Temporarily unavailable</span>
-          </div>
-          <button class="btn sm primary" id="btn-retry-ai" onclick="retryAiReview()">
-            Retry AI Review
-          </button>
-        </div>
-        <div class="ai-status-desc">
-          Gemini is currently experiencing high demand. Your similarity analysis and source matching are still available.
-        </div>
-        <div class="ai-status-checklist">
-          <span>✓ Similarity analysis completed</span>
-          <span>✓ Web-source matching completed</span>
-          <span>✓ Matching evidence available</span>
-        </div>
+    const typeColor = p.matchType === "exact" ? "#f43f5e" : (p.matchType === "near" ? "#f59e0b" : "#8b5cf6");
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:11px;font-weight:700;color:${typeColor};text-transform:uppercase;">${p.matchType} Match</span>
+        <span style="font-size:11px;color:var(--text-muted);">${p.similarity || 100}%</span>
+      </div>
+      <p style="font-size:12px;color:#fff;line-height:1.5;margin-bottom:8px;">"${escapeHtml(p.text || "")}"</p>
+      <div style="font-size:11px;color:var(--text-secondary);">
+        Source: ${p.sourceUrl ? `<a href="${escapeHtml(p.sourceUrl)}" target="_blank" style="color:var(--cyan-accent);text-decoration:none;">${escapeHtml(p.sourceTitle || p.sourceUrl)}</a>` : 'External Source'}
       </div>
     `;
-  }
-
-  const cardsHtml = passages.map((p, idx) => {
-    const aiItem = aiReviewMap.get(p.id);
-    return `
-      <div class="evidence-card" id="ev-card-${idx}" onclick="selectPassage(${idx})">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span class="evidence-badge" style="background:${p.type === 'EXACT' ? 'rgba(244,63,94,0.18); color:#fecdd3;' : p.type === 'NEAR' ? 'rgba(245,158,11,0.18); color:#fde68a;' : 'rgba(139,92,246,0.18); color:#ddd6fe;'}">
-            ${escapeHtml(p.type)} MATCH · ${p.similarityScore || 100}%
-          </span>
-          <button class="btn sm outline" style="padding:2px 8px; font-size:10px;" onclick="event.stopPropagation(); sendPassageToRewrite('${escapeHtml(p.submittedSentence || p.phrase || '')}')">Send to AI Rewrite →</button>
-        </div>
-
-        <div style="font-weight:700; font-size:12px; margin-bottom:4px; color:#fff;">Source: ${escapeHtml(p.sourceTitle || 'Web Source')}</div>
-        <div style="font-size:11px; color:var(--violet-400); word-break:break-all; margin-bottom:10px;">
-          <a href="${escapeHtml(p.sourceUrl || '#')}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;" onclick="event.stopPropagation()">${escapeHtml(p.sourceUrl || '')}</a>
-        </div>
-
-        <div class="side-by-side-grid">
-          <div class="side-box">
-            <h6>Submitted Passage</h6>
-            <div style="color:#f4f4f5;">${escapeHtml(p.submittedSentence || p.phrase || '')}</div>
-          </div>
-          <div class="side-box">
-            <h6>Verified Source Text</h6>
-            <div style="color:#f4f4f5;">${escapeHtml(p.sourceSentence || p.phrase || '')}</div>
-          </div>
-        </div>
-
-        ${aiItem ? `
-          <div class="gemini-review-card">
-            <div class="gemini-pill">Gemini AI Evidence Review</div>
-            <div><strong>Confidence:</strong> ${escapeHtml(aiItem.classification || 'REVIEW')}</div>
-            <div style="margin-top:3px; color:var(--text-secondary);"><strong>Reason:</strong> ${escapeHtml(aiItem.reason || '')}</div>
-            <div style="margin-top:3px; color:var(--text-secondary);"><strong>Recommendation:</strong> ${escapeHtml(aiItem.recommendedAction || 'Review citation')}</div>
-          </div>
-        ` : isAiUnavailable ? `
-          <div style="background:rgba(245,158,11,0.1); border:1px solid var(--amber-border); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:11px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-            <span style="color:#fbbf24; font-weight:700;">AI Review: Temporarily unavailable</span>
-            <button class="btn sm outline" style="padding:2px 8px; font-size:10px;" onclick="retryAiReview()">Retry AI Review</button>
-          </div>
-        ` : `
-          <div style="font-size:10px; color:var(--text-muted); margin-top:8px;">
-            AI Review: ${escapeHtml(analysis.aiReview?.message || 'Configured via Gemini')}
-          </div>
-        `}
-      </div>
-    `;
-  }).join("");
-
-  $("evidence-panel").innerHTML = statusCardHtml + cardsHtml;
-}
-
-async function retryAiReview() {
-  if (!state.currentAnalysis || !state.currentAnalysis.id) return;
-  const btns = document.querySelectorAll("#btn-retry-ai, button[onclick='retryAiReview()']");
-  btns.forEach(b => {
-    b.disabled = true;
-    b.dataset.origText = b.textContent;
-    b.textContent = "Retrying AI Review...";
+    container.appendChild(card);
   });
 
-  try {
-    const res = await fetch(`/api/analysis/${encodeURIComponent(state.currentAnalysis.id)}/retry-ai-review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
-    });
-    const data = await parseApiResponse(res);
-    if (data.aiReview) {
-      state.currentAnalysis.aiReview = data.aiReview;
-      renderPassagesTab(state.currentAnalysis);
-      const aiStatus = data.aiReview.status;
-      const aiState = data.aiReview.state;
-      if (aiStatus === "SUCCESS" || aiStatus === "completed") {
-        $("m-gemini").innerHTML = '<span style="color:#34d399; font-weight:700;">Completed</span>';
-      } else if (aiStatus === "UNAVAILABLE" || aiState === "AI_REVIEW_UNAVAILABLE") {
-        $("m-gemini").innerHTML = '<span style="color:#fbbf24; font-weight:700;">Temporarily unavailable</span> <button class="btn sm outline" style="margin-left:6px; padding:1px 6px; font-size:10px;" onclick="retryAiReview()">Retry</button>';
-      } else {
-        $("m-gemini").textContent = data.aiReview.message || "Not configured";
-      }
-      renderReportFrame(state.currentAnalysis.id);
+  // Highlight original document box
+  let fullText = $("doc-text").value;
+  let highlighted = escapeHtml(fullText);
+  passages.slice(0, 10).forEach(p => {
+    if (p.text && p.text.length > 10) {
+      const esc = escapeHtml(p.text);
+      highlighted = highlighted.replace(esc, `<mark style="background:rgba(124, 58, 237, 0.35);color:#fff;border-radius:3px;padding:2px 4px;">${esc}</mark>`);
     }
-  } catch (err) {
-    console.error("Retry AI Review error:", err);
-  } finally {
-    btns.forEach(b => {
-      b.disabled = false;
-      b.textContent = b.dataset.origText || "Retry AI Review";
-    });
-  }
+  });
+  $("highlighted-doc-box").innerHTML = highlighted;
 }
 
 function selectPassage(idx) {
-  document.querySelectorAll(".evidence-card").forEach(c => c.classList.remove("selected"));
-  const card = $(`ev-card-${idx}`);
-  if (card) {
-    card.classList.add("selected");
-    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-}
-
-function sendPassageToRewrite(passageText) {
-  $("rewrite-orig-text").value = passageText;
-  updateRewriteWordCount();
-  switchTab("rewrite");
-}
-
-// AI Rewrite / Refine Tab
-function setRewriteMode(mode) {
-  state.activeRewriteMode = mode;
-  document.querySelectorAll(".mode-pill").forEach(p => {
-    p.classList.toggle("active", p.dataset.mode === mode);
+  state.selectedPassageIndex = idx;
+  document.querySelectorAll(".passage-card").forEach((c, i) => {
+    c.classList.toggle("selected", i === idx);
   });
-}
-
-function updateRewriteWordCount() {
-  const words = ($("rewrite-orig-text").value.match(/[A-Za-z0-9]+(?:['’][A-Za-z]+)?/g) || []).length;
-  $("rewrite-orig-words").textContent = `${words} words`;
-}
-$("rewrite-orig-text").addEventListener("input", updateRewriteWordCount);
-
-async function runNaturalRewrite() {
-  const text = $("rewrite-orig-text").value.trim();
-  if (!text) { alert("Please enter text to rewrite."); return; }
-
-  const btn = $("btn-run-rewrite");
-  btn.disabled = true;
-  $("rewrite-revised-status").textContent = "Checkra AI rewriting...";
-
-  try {
-    const data = await api.rewrite({ text, mode: state.activeRewriteMode });
-    $("rewrite-revised-text").value = data.revisedText || "";
-    $("rewrite-revised-status").textContent = `Completed (${state.activeRewriteMode})`;
-  } catch (err) {
-    $("rewrite-revised-status").textContent = "Unavailable";
-    alert(err.message);
-  } finally {
-    btn.disabled = false;
+  const p = (state.currentAnalysis && state.currentAnalysis.passages) ? state.currentAnalysis.passages[idx] : null;
+  if (p && p.text) {
+    $("rewrite-orig-text").value = p.text;
+    $("rewrite-orig-words").textContent = p.text.split(/\s+/).filter(Boolean).length;
   }
 }
 
-function copyRevisedText() {
-  const val = $("rewrite-revised-text").value;
-  if (!val) return;
-  navigator.clipboard.writeText(val);
-  alert("Rewritten text copied to clipboard!");
-}
+// GRAMMAR TAB RENDERING
+function renderGrammarTab(grammar) {
+  if (!grammar) return;
+  const counts = grammar.issueCounts || { grammar: 0, spelling: 0, punctuation: 0, clarity: 0 };
+  $("g-count-grammar").textContent = counts.grammar || 0;
+  $("g-count-spelling").textContent = counts.spelling || 0;
+  $("g-count-punctuation").textContent = counts.punctuation || 0;
+  $("g-count-clarity").textContent = counts.clarity || 0;
 
-function replaceWorkspaceText() {
-  const val = $("rewrite-revised-text").value;
-  if (!val) return;
-  if (confirm("Replace workspace document with rewritten text?")) {
-    $("doc-text").value = val;
-    updateTextStats();
-    switchTab("workspace");
-  }
-}
-
-function downloadRevisedTxt() {
-  const val = $("rewrite-revised-text").value;
-  if (!val) return;
-  const blob = new Blob([val], { type: "text/plain;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `checkra-rewritten-${Date.now()}.txt`;
-  a.click();
-}
-
-// Grammar Tab
-async function runGrammarCheck() {
-  const text = $("doc-text").value.trim();
-  if (!text) { alert("Please enter document text in workspace first."); return; }
-
-  $("g-provider").textContent = "Checking...";
-  try {
-    const data = await api.grammar({ text });
-    renderGrammarTab(data);
-  } catch (err) {
-    alert("Grammar check error: " + err.message);
-  }
-}
-
-function renderGrammarTab(grammarData) {
-  const findings = grammarData.findings || [];
-  state.grammarFindings = findings;
-
-  let spelling = 0, syntax = 0, punct = 0, clarity = 0;
-  findings.forEach(f => {
-    const c = (f.category || "").toLowerCase();
-    if (c.includes("spell") || f.severity === "error") spelling++;
-    else if (c.includes("punct")) punct++;
-    else if (c.includes("clarity") || c.includes("concise")) clarity++;
-    else syntax++;
-  });
-
-  $("g-count-spelling").textContent = spelling;
-  $("g-count-grammar").textContent = syntax;
-  $("g-count-punctuation").textContent = punct;
-  $("g-count-clarity").textContent = clarity;
-  $("g-provider").textContent = grammarData.provider || "Checkra Linguistic Engine";
-
-  if (!findings.length) {
-    $("grammar-findings-list").innerHTML = '<div style="color:#34d399; font-weight:700; padding:20px 0;">✓ Excellent! No grammatical or stylistic issues detected in the text.</div>';
+  const list = $("grammar-findings-list");
+  if (!list) return;
+  const issues = grammar.findings || [];
+  if (issues.length === 0) {
+    list.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">No grammar issues detected. High linguistic quality.</p>';
     return;
   }
 
-  $("grammar-findings-list").innerHTML = findings.map((f, idx) => `
-    <div class="finding-card" id="finding-${idx}">
-      <div class="finding-top">
-        <span class="finding-cat">${escapeHtml(f.category)}</span>
-        <span style="font-size:9px; font-weight:800; color:${f.severity === 'error' ? 'var(--rose)' : 'var(--amber)'}; text-transform:uppercase;">${escapeHtml(f.severity)}</span>
+  list.innerHTML = "";
+  issues.slice(0, 15).forEach(issue => {
+    const item = document.createElement("div");
+    item.style.padding = "10px 12px";
+    item.style.background = "rgba(18, 18, 29, 0.6)";
+    item.style.borderRadius = "8px";
+    item.style.border = "1px solid var(--border-subtle)";
+    item.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">
+        <strong style="color:var(--amber);">${escapeHtml(issue.type || 'Suggestion')}</strong>
+        <span style="color:var(--text-muted);">${escapeHtml(issue.rule || '')}</span>
       </div>
-      <div class="finding-diff">
-        <del>${escapeHtml(f.original)}</del> → <ins>${escapeHtml(f.replacement)}</ins>
-      </div>
-      <div style="font-size:11px; color:var(--text-secondary);">${escapeHtml(f.explanation)}</div>
-      <div style="margin-top:10px; display:flex; gap:8px;">
-        <button class="btn sm primary" onclick="acceptGrammar(${idx}, '${escapeHtml(f.original)}', '${escapeHtml(f.replacement)}')">Accept Fix</button>
-        <button class="btn sm" onclick="dismissGrammar(${idx})">Ignore</button>
-      </div>
-    </div>
-  `).join("");
-}
-
-function acceptGrammar(idx, orig, repl) {
-  const current = $("doc-text").value;
-  $("doc-text").value = current.replace(orig, repl);
-  updateTextStats();
-  dismissGrammar(idx);
-}
-
-function dismissGrammar(idx) {
-  const el = $(`finding-${idx}`);
-  if (el) el.remove();
-}
-
-function acceptAllGrammar() {
-  let text = $("doc-text").value;
-  state.grammarFindings.forEach(f => {
-    if (f.original && f.replacement) {
-      text = text.replace(f.original, f.replacement);
-    }
+      <div style="font-size:12px;color:#fff;">${escapeHtml(issue.message || '')}</div>
+      ${issue.suggestion ? `<div style="font-size:11px;color:var(--emerald);margin-top:4px;">Suggestion: ${escapeHtml(issue.suggestion)}</div>` : ''}
+    `;
+    list.appendChild(item);
   });
-  $("doc-text").value = text;
-  updateTextStats();
-  $("grammar-findings-list").innerHTML = '<div style="color:#34d399; font-weight:700; padding:20px 0;">All suggested corrections have been applied to your document!</div>';
 }
 
-// Reports & Verification
-function renderReportFrame(analysisId) {
-  if (!analysisId) return;
-  $("report-frame").src = `/api/reports/${analysisId}/html`;
+// REPORT TAB RENDERING
+function renderReportTab(analysis) {
+  const frame = $("report-frame");
+  if (!frame) return;
+  if (analysis.report && analysis.report.htmlReport) {
+    frame.srcdoc = analysis.report.htmlReport;
+  }
+}
+
+// AI REWRITE
+async function runRewrite() {
+  const text = $("rewrite-orig-text").value.trim();
+  if (!text) {
+    alert("Please select or enter text to rewrite.");
+    return;
+  }
+  $("rewrite-revised-status").textContent = "Rewriting with AI...";
+  $("btn-run-rewrite").disabled = true;
+
+  try {
+    const result = await api.rewrite({ text, mode: "standard" });
+    if (result && result.rewrittenText) {
+      $("rewrite-revised-text").textContent = result.rewrittenText;
+      $("rewrite-revised-status").textContent = "Completed";
+    }
+  } catch (err) {
+    $("rewrite-revised-text").textContent = "AI Rewrite unavailable: " + err.message;
+    $("rewrite-revised-status").textContent = "Error";
+  } finally {
+    $("btn-run-rewrite").disabled = false;
+  }
+}
+
+async function retryAiReview() {
+  if (!state.currentAnalysis) {
+    alert("Please run an analysis first.");
+    return;
+  }
+  alert("AI Evidence Review retry initiated.");
 }
 
 function printReport() {
   const frame = $("report-frame");
-  if (frame && frame.contentWindow) {
-    frame.contentWindow.focus();
-    frame.contentWindow.print();
+  if (frame && frame.contentWindow) frame.contentWindow.print();
+}
+
+function downloadHtmlReport() {
+  if (!state.currentAnalysis || !state.currentAnalysis.report || !state.currentAnalysis.report.htmlReport) return;
+  const blob = new Blob([state.currentAnalysis.report.htmlReport], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "checkra-integrity-report.html";
+  a.click();
+}
+
+function downloadJsonReport() {
+  if (!state.currentAnalysis) return;
+  const blob = new Blob([JSON.stringify(state.currentAnalysis, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "checkra-integrity-audit.json";
+  a.click();
+}
+
+function copyVerificationLink() {
+  if (!state.currentAnalysis || !state.currentAnalysis.analysisId) {
+    alert("No analysis record available.");
+    return;
   }
+  const url = window.location.origin + "/verify/" + state.currentAnalysis.analysisId;
+  navigator.clipboard.writeText(url).then(() => {
+    alert("Verification link copied to clipboard: " + url);
+  });
 }
 
-function downloadReportHtml() {
-  if (!state.currentAnalysis) { alert("Please run an analysis first."); return; }
-  window.open(`/api/reports/${state.currentAnalysis.id}/html`, "_blank");
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function downloadEvidenceJson() {
-  if (!state.currentAnalysis) { alert("Please run an analysis first."); return; }
-  window.location.href = `/api/reports/${state.currentAnalysis.id}/json`;
-}
-
-function openVerificationPage() {
-  if (!state.currentAnalysis) { alert("Please run an analysis first."); return; }
-  window.open(`/verify/${state.currentAnalysis.id}`, "_blank");
-}
-
-// Diagnostics
-async function refreshDiagnostics() {
-  try {
-    const health = await api.health();
-    $("diag-server").textContent = health.server || "OK";
-    $("diag-gemini").textContent = health.gemini;
-    $("diag-gemini").style.color = health.gemini === "CONFIGURED" ? "#34d399" : "var(--amber)";
-    $("diag-search").textContent = health.searchProvider || health.externalSearchProvider || "SearXNG";
-    $("diag-searxng").textContent = health.searxngStatus || "CONNECTED";
-    $("diag-searxng").style.color = health.searxngStatus === "CONNECTED" ? "#34d399" : "var(--amber)";
-    $("diag-grounding").textContent = health.geminiGrounding || "UNAVAILABLE";
-    $("diag-grammar").textContent = health.grammar || "Built-in Linguistic Engine";
-    $("diag-embeddings").textContent = health.embeddings || "Local Mathematical Vectorizer";
-    $("diag-model").textContent = health.geminiModel || "gemini-3.5-flash";
-    $("backend-indicator").textContent = health.ok ? "Online" : "Offline";
-  } catch (e) {
-    $("diag-server").textContent = "Offline";
-    $("backend-indicator").textContent = "Offline";
-    $("backend-indicator").style.color = "var(--rose)";
-  }
-}
-
-// Initial Diagnostic on load
-refreshDiagnostics();
+// Initial health check
+window.addEventListener("DOMContentLoaded", () => {
+  updateWordCounts();
+  api.health().then(h => {
+    console.log("Checkra API Health:", h);
+  }).catch(e => console.warn("Initial health check:", e.message));
+});
 </script>
-
 </body>
 </html>

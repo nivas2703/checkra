@@ -100,8 +100,8 @@ async function retrievePage(url, timeoutMs = 2000) {
 /**
  * Concurrently retrieves candidate sources with bounded concurrency and strict overall time budget
  */
-async function retrieveMultipleSources(candidates = [], maxConcurrent = 3, overallBudgetMs = 3000) {
-  const targetCandidates = (candidates || []).slice(0, 5);
+async function retrieveMultipleSources(candidates = [], maxConcurrent = 4, overallBudgetMs = 3200) {
+  const targetCandidates = (candidates || []).slice(0, 8);
   const results = [];
   const queue = [...targetCandidates];
 
@@ -111,7 +111,7 @@ async function retrieveMultipleSources(candidates = [], maxConcurrent = 3, overa
     while (queue.length > 0 && !budgetExpired) {
       const item = queue.shift();
       if (!item) break;
-      const res = await retrievePage(item.url, 2000);
+      const res = await retrievePage(item.url, 1800);
       results.push({
         ...item,
         status: res.status,
