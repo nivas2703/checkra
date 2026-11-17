@@ -188,7 +188,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * Does NOT generate new sources or proclaim guilt.
  * Features automatic 3x retry with exponential backoff for transient 503/UNAVAILABLE errors.
  */
-async function reviewEvidenceWithGemini(evidenceItems = []) {
+async function reviewEvidenceWithGemini(evidenceItems = [], options = {}) {
   if (!isGeminiConfigured()) {
     return {
       status: "NOT_CONFIGURED",
@@ -250,8 +250,9 @@ Respond ONLY with valid JSON in this exact structure:
 
   logger.logEvent("gemini_evidence_review_started", { count: evidenceItems.length, model: modelName });
 
-  const maxAttempts = 3;
-  const backoffDelays = [1000, 2000, 4000]; // 1s, 2s, 4s
+  const timeoutMs = options.timeoutMs || 4000;
+  const maxAttempts = options.maxAttempts || 2;
+  const backoffDelays = [800, 1500];
   let lastError = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -268,7 +269,7 @@ Respond ONLY with valid JSON in this exact structure:
             temperature: 0.1
           }
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("ETIMEDOUT: Gemini API call timed out after 20000ms")), 20000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`ETIMEDOUT: Gemini API call timed out after ${timeoutMs}ms`)), timeoutMs))
       ]);
 
       const text = response.text || "{}";

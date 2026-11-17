@@ -7,10 +7,20 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
-    "test": "node test/suite.js"
+    "test": "node test/suite.js",
+    "test:reliability": "node test/similarity_reliability_test.js",
+    "test:regression": "node test/production_similarity_regression.js",
+    "test:e2e": "node test/e2e_full_validation.js",
+    "test:vercel": "node test/vercel_compatibility_test.js",
+    "test:stabilization": "node test/production_stabilization_test.js",
+    "test:large-doc": "node test/large_doc_audit.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@google/genai": "^3.3.0",
+    "@xenova/transformers": "^2.17.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",

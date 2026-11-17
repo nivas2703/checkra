@@ -1,84 +1,115 @@
 /**
- * VeriWrite Level 2 — Near Match Engine
- * Detects word substitutions, additions, removals, reorderings, and grammatical shifts.
- * Enforces lexical specificity to avoid treating generic domain definitions as paraphrased plagiarism.
+ * Checkra Level 2 — Near / Lexical Match Engine
+ * Detects word substitutions, synonym shifts, grammatical reorderings, and numerical variations.
+ * Strictly excludes generic domain vocabulary from generating false-positive plagiarism.
  */
 
 const { tokenize } = require("../document/preprocessor");
+const { STOPWORDS, isGenericTerm, stemWord, extractTokens } = require("./vocabularyClassifier");
 
-// Stopwords that frequently change in paraphrasing without changing meaning
-const STOPWORDS = new Set([
-  "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-  "of", "with", "by", "from", "as", "is", "are", "was", "were", "be",
-  "been", "being", "have", "has", "had", "do", "does", "did", "can",
-  "could", "should", "would", "may", "might", "must", "shall", "will"
-]);
+// Canonical concept mappings for genuine near-match paraphrasing
+const CANONICAL_NEAR_MAP = {
+  "increase": "growth_concept", "increased": "growth_concept", "increases": "growth_concept", "increasing": "growth_concept",
+  "grow": "growth_concept", "grew": "growth_concept", "grown": "growth_concept", "growing": "growth_concept", "growth": "growth_concept",
+  "annual": "year_concept", "annually": "year_concept", "year": "year_concept", "yearly": "year_concept",
+  "company": "firm_concept", "companies": "firm_concept", "firm": "firm_concept", "firms": "firm_concept",
+  "revenue": "income_concept", "revenues": "income_concept", "earnings": "income_concept",
+  "decrease": "drop_concept", "decreased": "drop_concept", "drop": "drop_concept", "dropped": "drop_concept",
+  "quarterly": "period_concept", "quarter": "period_concept",
+  "enterprise": "org_concept", "enterprises": "org_concept", "organization": "org_concept", "organizations": "org_concept",
+  "optimize": "improve_concept", "optimizes": "improve_concept", "optimizing": "improve_concept",
+  "improve": "improve_concept", "improves": "improve_concept", "improving": "improve_concept",
+  "efficiency": "perf_concept", "performance": "perf_concept"
+};
 
-const DOMAIN_GENERIC_WORDS = new Set([
-  "machine", "learning", "artificial", "intelligence", "algorithm", "algorithms",
-  "data", "dataset", "datasets", "model", "models", "system", "systems", "process",
-  "processes", "technology", "technologies", "information", "computer", "computers",
-  "science", "scientific", "field", "digital", "modern", "application", "applications",
-  "branch", "subset", "concept", "concepts", "theory", "theories",
-  "monsoon", "season", "seasons", "seasonal", "agriculture", "agricultural", "farming",
-  "farmer", "farmers", "crop", "crops", "harvest", "rainfall", "rain", "production",
-  "state", "states", "country", "countries", "region", "regions", "affect", "affects", "impact", "impacts"
-]);
-
-function hasLexicalSpecificity(tokens) {
+/**
+ * Checks if a token set has sufficient lexical specificity
+ */
+function hasNearLexicalSpecificity(tokens) {
   if (tokens.length >= 10) return true;
-  const nonGeneric = tokens.filter(t => !STOPWORDS.has(t) && !DOMAIN_GENERIC_WORDS.has(t));
-  return nonGeneric.length >= 2;
+  const distinctive = tokens.filter(t => !STOPWORDS.has(t) && !isGenericTerm(t));
+  return distinctive.length >= 2;
 }
 
-function stemLike(word) {
-  if (word.length <= 4) return word;
-  return word
-    .replace(/(?:ing|tion|tions|ment|ments|ed|es|s|al|ic|ly|ive|ize|ise)$/, "");
-}
-
+/**
+ * Computes lexical token similarity with distinctive weighting and canonical concept mapping
+ */
 function computeTokenSimilarity(tokensA, tokensB) {
-  if (!tokensA.length || !tokensB.length) return 0;
+  if (!tokensA.length || !tokensB.length) return { score: 0, sharedDistinctive: 0, distinctiveTerms: [] };
 
-  // Filter content words
   const contentA = tokensA.filter(t => !STOPWORDS.has(t));
   const contentB = tokensB.filter(t => !STOPWORDS.has(t));
 
-  const setA = new Set(contentA.length > 0 ? contentA : tokensA);
-  const setB = new Set(contentB.length > 0 ? contentB : tokensB);
+  if (!contentA.length || !contentB.length) return { score: 0, sharedDistinctive: 0, distinctiveTerms: [] };
 
-  // Exact content word intersection
-  let exactHits = 0;
-  for (const item of setA) {
-    if (setB.has(item)) exactHits++;
+  const stemsA = new Map();
+  contentA.forEach(t => stemsA.set(stemWord(t), t));
+
+  const stemsB = new Map();
+  contentB.forEach(t => stemsB.set(stemWord(t), t));
+
+  let sharedGeneric = 0;
+  let sharedDistinctive = 0;
+  const distinctiveTerms = [];
+
+  stemsA.forEach((rawWord, stem) => {
+    if (stemsB.has(stem)) {
+      if (isGenericTerm(rawWord) || isGenericTerm(stemsB.get(stem)) || isGenericTerm(stem)) {
+        sharedGeneric++;
+      } else {
+        sharedDistinctive++;
+        distinctiveTerms.push(rawWord);
+      }
+    } else {
+      // Check canonical near concepts (e.g. increase / grew, annual / year, enterprise / organization)
+      const canonA = CANONICAL_NEAR_MAP[rawWord] || CANONICAL_NEAR_MAP[stem];
+      if (canonA) {
+        let foundConcept = false;
+        stemsB.forEach((rawB, stemB) => {
+          if (!foundConcept) {
+            const canonB = CANONICAL_NEAR_MAP[rawB] || CANONICAL_NEAR_MAP[stemB];
+            if (canonB === canonA) {
+              sharedDistinctive++;
+              distinctiveTerms.push(`${rawWord}~${rawB}`);
+              foundConcept = true;
+            }
+          }
+        });
+      }
+    }
+  });
+
+  // CRITICAL GUARD: If zero or only 1 distinctive term is shared, this is NOT a near-match plagiarism!
+  // Prevents generic domain definition false positives like:
+  // "Companies use machine learning to improve business decisions." vs "Machine learning is widely used in modern businesses."
+  if (sharedDistinctive < 2) {
+    return { score: 0, sharedDistinctive, distinctiveTerms };
   }
 
-  // Stem/prefix hits for variations (improves / improve)
-  const stemsA = new Set([...setA].map(stemLike));
-  const stemsB = new Set([...setB].map(stemLike));
-  let stemHits = 0;
-  for (const s of stemsA) {
-    if (stemsB.has(s)) stemHits++;
+  const lenA = contentA.length;
+  const lenB = contentB.length;
+  const lengthRatio = Math.min(lenA, lenB) / Math.max(lenA, lenB);
+
+  // Reject extreme length mismatches (e.g. 5-word sentence matching a 50-word sentence)
+  if (lengthRatio < 0.25) {
+    return { score: 0, sharedDistinctive, distinctiveTerms };
   }
 
-  const unionSize = new Set([...setA, ...setB]).size;
-  const jaccard = unionSize > 0 ? (exactHits / unionSize) : 0;
-  const stemJaccard = new Set([...stemsA, ...stemsB]).size > 0 
-    ? (stemHits / new Set([...stemsA, ...stemsB]).size) 
-    : 0;
+  const totalShared = sharedGeneric + sharedDistinctive;
+  const jaccard = totalShared / (lenA + lenB - totalShared);
+  const containment = totalShared / Math.min(lenA, lenB);
 
-  // Containment ratio (how much of the smaller set is contained in the larger)
-  const minSize = Math.min(setA.size, setB.size);
-  const maxSize = Math.max(setA.size, setB.size);
-  const lengthRatio = maxSize > 0 ? (minSize / maxSize) : 0;
+  // Weighted near-match score: requires both reasonable Jaccard and high containment of distinctive terms
+  const rawScore = (containment * 0.70) + (jaccard * 0.30);
+  const adjustedScore = Math.min(1, rawScore * Math.min(1, 0.4 + 0.6 * lengthRatio));
 
-  // Genuine sentence paraphrasing requires compatible scale (reject wordlist dumps)
-  if (lengthRatio < 0.3) {
-    return Math.max(jaccard, stemJaccard * 0.85);
-  }
-
-  const containment = minSize > 0 ? (Math.max(exactHits, stemHits) / minSize) : 0;
-  return Math.max(jaccard, stemJaccard * 0.9, containment * 0.95 * Math.min(1, 0.4 + 0.6 * lengthRatio));
+  return {
+    score: adjustedScore,
+    sharedDistinctive,
+    distinctiveTerms,
+    containment,
+    jaccard
+  };
 }
 
 /**
@@ -87,57 +118,50 @@ function computeTokenSimilarity(tokensA, tokensB) {
 function findNearMatches(submittedSentences, sourceSentences, threshold = 0.45) {
   const matches = [];
 
-  const subList = submittedSentences.map(s => {
-    if (typeof s === "string") {
-      return { raw: s, tokens: tokenize(s) };
-    }
-    return {
-      raw: s.raw || s.text || "",
-      tokens: s.tokens || tokenize(s.raw || s.text || ""),
-      index: s.index || s.sentenceIndex || 0
-    };
+  const subList = submittedSentences.map((s, idx) => {
+    const raw = typeof s === "string" ? s : s.raw || s.text || "";
+    const tokens = extractTokens(raw);
+    return { raw, tokens, index: s.index !== undefined ? s.index : idx };
   }).filter(s => s.tokens.length >= 4);
 
-  const srcList = sourceSentences.map(s => {
-    if (typeof s === "string") {
-      return { raw: s, tokens: tokenize(s) };
-    }
-    return {
-      raw: s.raw || s.text || "",
-      tokens: s.tokens || tokenize(s.raw || s.text || ""),
-      index: s.index || 0
-    };
+  const srcList = sourceSentences.map((s, idx) => {
+    const raw = typeof s === "string" ? s : s.raw || s.text || "";
+    const tokens = extractTokens(raw);
+    return { raw, tokens, index: idx };
   }).filter(s => s.tokens.length >= 4);
 
   for (let i = 0; i < subList.length; i++) {
     const sub = subList[i];
-    // Must possess lexical specificity to qualify as near-match candidate
-    if (!hasLexicalSpecificity(sub.tokens)) {
+    if (!hasNearLexicalSpecificity(sub.tokens)) {
       continue;
     }
 
     let bestScore = 0;
     let bestSrc = null;
+    let bestDetails = null;
 
     for (let j = 0; j < srcList.length; j++) {
       const src = srcList[j];
-      const sim = computeTokenSimilarity(sub.tokens, src.tokens);
+      const result = computeTokenSimilarity(sub.tokens, src.tokens);
 
-      if (sim > bestScore) {
-        bestScore = sim;
+      if (result.score > bestScore) {
+        bestScore = result.score;
         bestSrc = src;
+        bestDetails = result;
       }
     }
 
-    if (bestScore >= threshold && bestSrc) {
+    if (bestScore >= threshold && bestSrc && bestDetails && bestDetails.sharedDistinctive >= 2) {
       const scaledScore = Math.round(bestScore * 100);
       matches.push({
         type: "NEAR",
         submittedSentence: sub.raw,
         sourceSentence: bestSrc.raw,
-        submittedIndex: sub.index || i,
+        submittedIndex: sub.index,
         similarityScore: scaledScore,
-        confidence: bestScore >= 0.70 ? "HIGH" : "MEDIUM"
+        confidence: bestScore >= 0.70 ? "HIGH" : "MEDIUM",
+        distinctiveTerms: bestDetails.distinctiveTerms,
+        sharedDistinctive: bestDetails.sharedDistinctive
       });
     }
   }
@@ -148,6 +172,5 @@ function findNearMatches(submittedSentences, sourceSentences, threshold = 0.45) 
 module.exports = {
   findNearMatches,
   computeTokenSimilarity,
-  stemLike,
-  hasLexicalSpecificity
+  hasNearLexicalSpecificity
 };

@@ -9,7 +9,7 @@
 
 const { reviewEvidenceWithGemini, isGeminiConfigured } = require("../services/geminiService");
 
-async function reviewEvidenceWithAI(evidencePayload = []) {
+async function reviewEvidenceWithAI(evidencePayload = [], options = {}) {
   if (!isGeminiConfigured()) {
     return {
       status: "not_configured",
@@ -31,7 +31,7 @@ async function reviewEvidenceWithAI(evidencePayload = []) {
     semantic_similarity: p.semanticSimilarity || 0
   }));
 
-  return await reviewEvidenceWithGemini(structuredItems);
+  return await reviewEvidenceWithGemini(structuredItems, options);
 }
 
 module.exports = {

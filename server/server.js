@@ -22,6 +22,7 @@ const { isGeminiConfigured, getGeminiModel, testGeminiConnection, testGeminiGrou
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
+app.set("trust proxy", true);
 app.use(cors());
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
@@ -469,13 +470,33 @@ app.get("/verify/:id", (req, res) => {
   res.send(html);
 });
 
+// Express Error Handling Middleware - guarantees JSON response for API errors
+app.use((err, req, res, next) => {
+  logger.error("Unhandled express error", { error: err.message, stack: err.stack });
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.setHeader("Content-Type", "application/json");
+  res.status(err.status || 500).json({
+    success: false,
+    error: {
+      code: err.code || "INTERNAL_ERROR",
+      message: err.message || "An unexpected error occurred during processing."
+    }
+  });
+});
+
 // Catch-all: SPA index.html
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
 const PORT = Number(process.env.PORT || 8787);
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Checkra running at http://localhost:${PORT}`);
-  logger.info("Server started", { port: PORT, gemini: isGeminiConfigured() });
-});
+if (require.main === module) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Checkra running at http://localhost:${PORT}`);
+    logger.info("Server started", { port: PORT, gemini: isGeminiConfigured() });
+  });
+}
+
+module.exports = app;

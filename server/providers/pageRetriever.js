@@ -1,7 +1,10 @@
 /**
- * VeriWrite Web Page Retriever
+ * Checkra Web Page Retriever
  * Safely fetches public web sources with SSRF protection, timeouts,
  * controlled concurrency, and HTML text extraction.
+ *
+ * Strict Rule: Search results / snippets are NOT evidence.
+ * Unreachable pages (403, 404, 500, timeouts) are marked SOURCE_NOT_VERIFIABLE.
  */
 
 const { isSafeUrl, sanitizeHtml } = require("../utils/security");
@@ -26,7 +29,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
 async function retrievePage(url) {
   if (!isSafeUrl(url)) {
     return {
-      status: "INACCESSIBLE",
+      status: "SOURCE_NOT_VERIFIABLE",
       reason: "URL failed SSRF security validation",
       text: "",
       retrievedAt: new Date().toISOString()
@@ -48,7 +51,7 @@ async function retrievePage(url) {
 
     if (!res.ok) {
       return {
-        status: "INACCESSIBLE",
+        status: "SOURCE_NOT_VERIFIABLE",
         reason: `HTTP ${res.status} ${res.statusText}`,
         text: "",
         retrievedAt: new Date().toISOString()
@@ -58,7 +61,7 @@ async function retrievePage(url) {
     const contentType = res.headers.get("content-type") || "";
     if (!contentType.includes("text/html") && !contentType.includes("text/plain")) {
       return {
-        status: "INACCESSIBLE",
+        status: "SOURCE_NOT_VERIFIABLE",
         reason: `Unsupported content-type: ${contentType}`,
         text: "",
         retrievedAt: new Date().toISOString()
@@ -70,8 +73,8 @@ async function retrievePage(url) {
 
     if (cleanText.length < 80) {
       return {
-        status: "PARTIALLY_VERIFIED",
-        reason: "Page retrieved but contained very little readable text",
+        status: "SOURCE_NOT_VERIFIABLE",
+        reason: "Page retrieved but contained insufficient readable text",
         text: cleanText,
         retrievedAt: new Date().toISOString()
       };
@@ -86,7 +89,7 @@ async function retrievePage(url) {
     };
   } catch (err) {
     return {
-      status: "INACCESSIBLE",
+      status: "SOURCE_NOT_VERIFIABLE",
       reason: err.name === "AbortError" ? "Request timed out" : err.message,
       text: "",
       retrievedAt: new Date().toISOString()

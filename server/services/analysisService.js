@@ -1,15 +1,18 @@
 /**
- * VeriWrite Resilient Analysis Service
+ * Checkra Resilient Analysis Service
  * Implements decoupled, independent analysis stages with partial-success tolerance.
  *
  * STAGES:
- * 1. Document Preprocessing (Fails ONLY if text is empty/unreadable)
- * 2. Local Similarity Engine (Always executes)
- * 3. Web Search & Grounding (Graceful degradation if unconfigured/failing)
- * 4. Safe Source Retrieval (Per-source error isolation)
- * 5. Multi-Level Evidence Comparison (Exact, Near, Semantic)
- * 6. Gemini Evidence Review (Graceful fallback if unconfigured)
- * 7. Transparent Scoring & Session Report Preparation
+ * 1. Document Preprocessing & Normalization
+ * 2. Multi-Tier Search Discovery (SearXNG / Configured API / Wikipedia Fallback / Local Corpus)
+ * 3. Safe Source Retrieval (Per-source isolation; unreachable pages marked SOURCE_NOT_VERIFIABLE)
+ * 4. Multi-Level Evidence Comparison:
+ *    - Level 1: Multi-scale Exact Match (5, 7, 9, 12, 15 n-grams with lexical specificity)
+ *    - Level 2: Near / Lexical Match (stemming, Jaccard, containment, distinctive vocabulary)
+ *    - Level 3: Semantic Embeddings (Transformers.js Xenova/all-MiniLM-L6-v2 + Multi-Signal Verification)
+ * 5. Deterministic Non-Overlapping Scoring (Word coverage, zero artificial inflation)
+ * 6. Optional Gemini AI Evidence Review (isolated, never affects score)
+ * 7. Transparent Reporting & Ephemeral Session Caching
  */
 
 const db = require("../db/database");
@@ -43,7 +46,7 @@ async function executeAnalysis({
     geminiReview: "pending"
   };
 
-  // STAGE 1 — Document Processing (Only critical stage that can fail)
+  // STAGE 1 — Document Processing
   onProgress({ step: 1, label: "Step 1 — Reading and validating document", percent: 10 });
   const rawDocument = text || "";
   if (!rawDocument.trim() || rawDocument.trim().length < 20) {
@@ -63,7 +66,7 @@ async function executeAnalysis({
   // STAGE 2 & 3 — Web Search & Candidate Discovery
   onProgress({ step: 3, label: "Step 3 — Generating distinctive search queries", percent: 30 });
   onProgress({ step: 4, label: "Step 4 — Searching web & discover candidate sources", percent: 40 });
-  
+
   let discovery = {
     mode: "LOCAL_COMPARISON",
     modeLabel: "Local Comparison (Web search not configured)",
@@ -81,27 +84,31 @@ async function executeAnalysis({
     discovery.message = `Web search encountered an error: ${err.message}. Running local comparison.`;
   }
 
-  // STAGE 4 — Safe Source Retrieval (Per-source isolation)
+  // STAGE 4 — Safe Source Retrieval
   onProgress({ step: 5, label: "Step 5 — Retrieving candidate sources safely", percent: 50 });
   let retrievedSources = [];
   try {
+    const localRefSources = getLocalReferenceSources().map(s => ({ ...s, status: "VERIFIED" }));
+
     if (discovery.sources.some(s => s.isLocal)) {
       retrievedSources = discovery.sources.map(s => ({ ...s, status: "VERIFIED" }));
       stageStatuses.sourceRetrieval = "local";
     } else if (discovery.sources.length > 0) {
       retrievedSources = await retrieveMultipleSources(discovery.sources, 4);
       stageStatuses.sourceRetrieval = "success";
+      if (localRefSources.length > 0) {
+        retrievedSources.push(...localRefSources);
+      }
     } else {
       stageStatuses.sourceRetrieval = "no_sources";
-      const localFallback = getLocalReferenceSources();
-      if (localFallback.length > 0) {
-        retrievedSources = localFallback.map(s => ({ ...s, status: "VERIFIED" }));
+      if (localRefSources.length > 0) {
+        retrievedSources = localRefSources;
         stageStatuses.sourceRetrieval = "local_fallback";
       }
     }
 
-    // If external retrieval returned 0 readable pages, augment with reference corpus
-    const hasReadable = retrievedSources.some(s => s.text && s.status !== "INACCESSIBLE");
+    // Fallback if zero readable pages were retrieved
+    const hasReadable = retrievedSources.some(s => s.text && s.status === "VERIFIED");
     if (!hasReadable) {
       const localFallback = getLocalReferenceSources();
       if (localFallback.length > 0) {
@@ -112,7 +119,7 @@ async function executeAnalysis({
       }
     }
 
-    // Support direct reference document comparison
+    // Direct reference document comparison if supplied in request
     if (options.referenceText && typeof options.referenceText === "string" && options.referenceText.trim().length > 20) {
       retrievedSources.push({
         title: options.referenceTitle || "Submitted Reference Document",
@@ -129,13 +136,26 @@ async function executeAnalysis({
     stageStatuses.sourceRetrieval = "failed";
   }
 
+  // Track unverifiable sources (e.g. 403, 404, 500, timeouts)
+  const unverifiableSources = [];
+  retrievedSources.forEach(src => {
+    if (src.status === "SOURCE_NOT_VERIFIABLE" || src.status === "INACCESSIBLE") {
+      unverifiableSources.push({
+        title: src.title,
+        url: src.url,
+        status: "SOURCE_NOT_VERIFIABLE",
+        reason: src.reason || "Web page could not be accessed or extracted"
+      });
+    }
+  });
+
   // STAGE 5 — Multi-Level Evidence Comparison (Exact + Near + Semantic)
   onProgress({ step: 6, label: "Step 6 — Comparing exact and near-match evidence", percent: 65 });
   const sourceEvidences = [];
   const allMatchedPassages = [];
 
   for (const src of retrievedSources) {
-    if (!src.text || src.status === "INACCESSIBLE") {
+    if (!src.text || src.status !== "VERIFIED") {
       continue;
     }
 
@@ -144,7 +164,7 @@ async function executeAnalysis({
     // Level 1: Exact matches
     let exactResult = { matches: [], exactOverlapPercent: 0 };
     try {
-      exactResult = findExactMatches(processed.tokens, src.text, options.minMatchLength || 6);
+      exactResult = findExactMatches(processed.tokens, src.text, options.minMatchLength || 6, src.url);
     } catch (e) {
       logger.warn("Exact match error", { url: src.url, error: e.message });
     }
@@ -161,17 +181,17 @@ async function executeAnalysis({
     }
 
     const exactWeight = exactResult.exactOverlapPercent || 0;
-    const avgNearScore = nearResult.length > 0 
-      ? Math.round(nearResult.reduce((sum, n) => sum + (n.similarityScore || 50), 0) / nearResult.length) 
+    const avgNearScore = nearResult.length > 0
+      ? Math.round(nearResult.reduce((sum, n) => sum + (n.similarityScore || 70), 0) / nearResult.length)
       : 0;
-    const sourceSim = Math.min(100, Math.max(exactWeight, Math.round((exactWeight * 0.6) + (avgNearScore * 0.4))));
+    const sourceSim = Math.min(100, Math.max(exactWeight, avgNearScore));
 
     if (sourceSim > 0 || exactResult.matches.length > 0 || nearResult.length > 0) {
       sourceEvidences.push({
         title: src.title,
         url: src.url,
         snippet: src.snippet,
-        status: src.status || "VERIFIED",
+        status: "VERIFIED",
         similarity: sourceSim,
         sourceType: srcClassification.type,
         exactMatches: exactResult.matches,
@@ -192,8 +212,9 @@ async function executeAnalysis({
           sourceUrl: src.url,
           similarityScore: 100,
           matchedWords: em.length,
-          status: src.status || "VERIFIED",
-          confidence: em.confidence || "HIGH"
+          status: "VERIFIED",
+          confidence: em.confidence || "HIGH",
+          isPlagiarismEvidence: true
         });
       });
 
@@ -209,14 +230,15 @@ async function executeAnalysis({
           sourceUrl: src.url,
           similarityScore: nm.similarityScore || 70,
           matchedWords: (nm.submittedSentence || "").split(/\s+/).length,
-          status: src.status || "VERIFIED",
-          confidence: nm.confidence || "MEDIUM"
+          status: "VERIFIED",
+          confidence: nm.confidence || "MEDIUM",
+          isPlagiarismEvidence: true
         });
       });
     }
   }
 
-  // Level 3: Semantic comparison with conservative 4-tier thresholds
+  // Level 3: Semantic comparison with sentence transformers & multi-signal evidence classification
   onProgress({ step: 7, label: "Step 7 — Evaluating semantic sentence similarity", percent: 75 });
   const topicalSources = [];
   const possibleSources = [];
@@ -224,27 +246,43 @@ async function executeAnalysis({
   for (const src of retrievedSources) {
     if (src.text && src.status === "VERIFIED") {
       try {
-        const srcSentences = (src.text.match(/[^.!?\r\n]+[.!?]?/g) || []).map(s => s.trim()).filter(s => s.length >= 20 && s.length <= 450);
-        const semResult = await findSemanticMatches(processed.eligibleSentences.slice(0, 40), srcSentences.slice(0, 60), {
-          embeddingApiUrl: options.embeddingApiUrl,
-          embeddingApiKey: options.embeddingApiKey,
-          threshold: 35 // Threshold for candidate semantic evaluation
-        });
+        const srcSentences = (src.text.match(/[^.!?\r\n]+[.!?]?/g) || [])
+          .map(s => s.trim())
+          .filter(s => s.length >= 20 && s.length <= 450);
+
+        let candidateSentences = processed.eligibleSentences;
+        if (candidateSentences.length > 40) {
+          const sampled = [];
+          const step = candidateSentences.length / 35;
+          for (let sIdx = 0; sIdx < 35; sIdx++) {
+            sampled.push(candidateSentences[Math.floor(sIdx * step)]);
+          }
+          candidateSentences = sampled;
+        }
+
+        const semResult = await findSemanticMatches(
+          candidateSentences,
+          srcSentences.slice(0, 40),
+          {
+            embeddingApiUrl: options.embeddingApiUrl,
+            embeddingApiKey: options.embeddingApiKey
+          }
+        );
 
         if (semResult.matches && semResult.matches.length > 0) {
-          const highConfidenceMatches = semResult.matches.filter(m => m.tier === "HIGH_CONFIDENCE_MATCH" && m.isPlagiarismEvidence === true);
-          const possibleMatches = semResult.matches.filter(m => m.tier === "POSSIBLE_MATCH");
-          const lowConfidenceMatches = semResult.matches.filter(m => m.tier === "LOW_CONFIDENCE");
+          const strongParaphrases = semResult.matches.filter(m => m.classification === "STRONG_PARAPHRASE" && m.isPlagiarismEvidence === true);
+          const possibleParaphrases = semResult.matches.filter(m => m.classification === "POSSIBLE_PARAPHRASE");
+          const conceptualOrTopical = semResult.matches.filter(m => m.classification === "TOPICAL_SIMILARITY" || m.classification === "CONCEPTUAL_SIMILARITY");
 
-          // High Confidence Semantic Match (>= 45% with distinctive multi-token evidence)
-          if (highConfidenceMatches.length > 0) {
+          // 1. Strong Paraphrase -> Verified matching evidence
+          if (strongParaphrases.length > 0) {
             let existingEvidence = sourceEvidences.find(s => s.url === src.url);
             if (!existingEvidence) {
               existingEvidence = {
                 title: src.title,
                 url: src.url,
                 snippet: src.snippet,
-                status: src.status || "VERIFIED",
+                status: "VERIFIED",
                 similarity: 0,
                 sourceType: classifySource(src.url).type,
                 exactMatches: [],
@@ -253,10 +291,10 @@ async function executeAnalysis({
               };
               sourceEvidences.push(existingEvidence);
             }
-            existingEvidence.semanticMatches = highConfidenceMatches;
-            existingEvidence.similarity = Math.max(existingEvidence.similarity, highConfidenceMatches[0].similarityScore);
+            existingEvidence.semanticMatches = strongParaphrases;
+            existingEvidence.similarity = Math.max(existingEvidence.similarity, strongParaphrases[0].similarityScore);
 
-            highConfidenceMatches.forEach(sm => {
+            strongParaphrases.forEach(sm => {
               allMatchedPassages.push({
                 id: `p_${allMatchedPassages.length + 1}`,
                 type: "SEMANTIC",
@@ -266,28 +304,32 @@ async function executeAnalysis({
                 sourceSentence: sm.sourceSentence,
                 sourceTitle: src.title,
                 sourceUrl: src.url,
-                similarityScore: sm.similarityScore || 85,
+                similarityScore: sm.similarityScore,
+                rawSemanticSimilarity: sm.rawSemanticSimilarity,
+                semanticSimilarityPercent: sm.semanticSimilarityPercent,
                 matchedWords: (sm.submittedSentence || "").split(/\s+/).length,
-                status: src.status,
+                status: "VERIFIED",
                 confidence: "HIGH",
                 tier: sm.tier,
+                classification: sm.classification,
                 isPlagiarismEvidence: true
               });
             });
-          } else if (possibleMatches.length > 0) {
-            // Possible Semantic Similarity (75-84%) — Informational / Possible, not auto-verified match
-            if (!sourceEvidences.some(s => s.url === src.url) && !possibleSources.some(s => s.url === src.url)) {
-              possibleSources.push({
-                title: src.title,
-                url: src.url,
-                snippet: src.snippet,
-                status: src.status || "VERIFIED",
-                classification: "Possible Semantic Similarity",
-                similarity: possibleMatches[0].similarityScore,
-                reason: possibleMatches[0].description
-              });
-            }
-            possibleMatches.forEach(pm => {
+          }
+
+          // 2. Possible Paraphrases -> Informational review only
+          if (possibleParaphrases.length > 0 && !sourceEvidences.some(s => s.url === src.url) && !possibleSources.some(s => s.url === src.url)) {
+            possibleSources.push({
+              title: src.title,
+              url: src.url,
+              snippet: src.snippet,
+              status: "VERIFIED",
+              classification: "Possible Paraphrase",
+              similarity: possibleParaphrases[0].similarityScore,
+              reason: possibleParaphrases[0].description
+            });
+
+            possibleParaphrases.forEach(pm => {
               allMatchedPassages.push({
                 id: `p_${allMatchedPassages.length + 1}`,
                 type: "POSSIBLE",
@@ -298,26 +340,28 @@ async function executeAnalysis({
                 sourceTitle: src.title,
                 sourceUrl: src.url,
                 similarityScore: pm.similarityScore,
+                rawSemanticSimilarity: pm.rawSemanticSimilarity,
                 matchedWords: (pm.submittedSentence || "").split(/\s+/).length,
-                status: src.status,
+                status: "VERIFIED",
                 confidence: "POSSIBLE",
                 tier: pm.tier,
+                classification: pm.classification,
                 isPlagiarismEvidence: false
               });
             });
-          } else if (lowConfidenceMatches.length > 0) {
-            // Low Confidence / Informational (65-74%)
-            if (!sourceEvidences.some(s => s.url === src.url) && !possibleSources.some(s => s.url === src.url) && !topicalSources.some(s => s.url === src.url)) {
-              topicalSources.push({
-                title: src.title,
-                url: src.url,
-                snippet: src.snippet,
-                status: src.status || "VERIFIED",
-                classification: "Low Confidence / Informational",
-                similarity: lowConfidenceMatches[0].similarityScore,
-                reason: lowConfidenceMatches[0].description
-              });
-            }
+          }
+
+          // 3. Conceptual / Topical overlap -> Non-plagiarism topical source
+          if (conceptualOrTopical.length > 0 && !sourceEvidences.some(s => s.url === src.url) && !possibleSources.some(s => s.url === src.url) && !topicalSources.some(s => s.url === src.url)) {
+            topicalSources.push({
+              title: src.title,
+              url: src.url,
+              snippet: src.snippet,
+              status: "VERIFIED",
+              classification: "Topically Related / No Derivation Evidence",
+              similarity: 0,
+              reason: conceptualOrTopical[0].description
+            });
           }
         }
       } catch (err) {
@@ -337,7 +381,7 @@ async function executeAnalysis({
           title: src.title,
           url: src.url,
           snippet: src.snippet,
-          status: src.status || "VERIFIED",
+          status: "VERIFIED",
           classification: "Topically Related / No Derivation Evidence",
           similarity: 0,
           reason: "Topically related web source retrieved for query, but contains no textual derivation or paraphrasing evidence."
@@ -348,8 +392,41 @@ async function executeAnalysis({
 
   stageStatuses.localSimilarity = "success";
 
-  // STAGE 6 — Gemini AI Evidence Review
-  onProgress({ step: 8, label: "Step 8 — Gemini AI reviewing evidence", percent: 85 });
+  // STAGE 6 — Deterministic Scoring & Status Determination
+  // Computed strictly from verified exact, near, and semantic matches.
+  // CRITICAL: Similarity score NEVER depends on Gemini.
+  onProgress({ step: 9, label: "Step 9 — Calculating transparent score", percent: 90 });
+  const verifiedMatchingSources = sourceEvidences.filter(s =>
+    (s.exactMatches?.length || 0) > 0 ||
+    (s.nearMatches?.length || 0) > 0 ||
+    (s.semanticMatches?.length || 0) > 0
+  );
+
+  const scoreResult = calculateDocumentScore(processed.tokens, verifiedMatchingSources, processed.eligibleSentences);
+  verifiedMatchingSources.sort((a, b) => b.similarity - a.similarity);
+
+  const highRiskCount = allMatchedPassages.filter(p => p.type === "EXACT" || (p.similarityScore || 0) >= 80).length;
+
+  // Determine overall status and context-aware messaging
+  const isLimited = (stageStatuses.webSearch !== "success" && stageStatuses.webSearch !== "local_fallback");
+  const overallStatus = isLimited ? "completed_with_limitations" : "completed";
+
+  let statusMessage = "";
+  if (discovery.mode === "LOCAL_COMPARISON") {
+    statusMessage = "Web search unavailable. Local similarity analysis completed.";
+  } else if (retrievedSources.length === 0 || (!retrievedSources.some(s => s.status === "VERIFIED") && unverifiableSources.length > 0)) {
+    statusMessage = "No external sources could be verified in this analysis.";
+  } else if (scoreResult.score === 0) {
+    statusMessage = "0% verified similarity found in the sources successfully checked.";
+  } else if (isLimited) {
+    statusMessage = "Analysis completed with limited services.";
+  } else {
+    statusMessage = discovery.message || "Complete analysis finished successfully.";
+  }
+
+  // STAGE 7 — Optional Gemini AI Evidence Review
+  // Decoupled from core scoring, bounded by strict 3500ms timeout so Vercel execution never exceeds time limit.
+  onProgress({ step: 10, label: "Step 10 — Gemini AI reviewing evidence (optional)", percent: 95 });
   let aiReview = {
     status: "NOT_CONFIGURED",
     state: "AI_REVIEW_NOT_CONFIGURED",
@@ -358,10 +435,15 @@ async function executeAnalysis({
     message: "Gemini review unavailable — configure GEMINI_API_KEY in environment.",
     items: []
   };
+
   const passagesForAiReview = allMatchedPassages.filter(p => p.type === "EXACT" || p.type === "NEAR" || p.type === "SEMANTIC" || p.type === "POSSIBLE");
   try {
     if (passagesForAiReview.length > 0) {
-      aiReview = await reviewEvidenceWithAI(passagesForAiReview.slice(0, 10));
+      // Bound AI review by strict timeout to guarantee fast serverless completion
+      aiReview = await Promise.race([
+        reviewEvidenceWithAI(passagesForAiReview.slice(0, 8), { timeoutMs: 3500, maxAttempts: 1 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("AI review timeout")), 3800))
+      ]);
       stageStatuses.geminiReview = (aiReview.status === "SUCCESS" || aiReview.status === "completed") ? "success" : "limited";
     } else {
       aiReview = {
@@ -375,7 +457,7 @@ async function executeAnalysis({
       stageStatuses.geminiReview = "not_needed";
     }
   } catch (err) {
-    logger.warn("Gemini evidence review failed", { error: err.message });
+    logger.warn("Gemini evidence review failed or timed out", { error: err.message });
     aiReview = {
       status: "UNAVAILABLE",
       state: "AI_REVIEW_UNAVAILABLE",
@@ -386,27 +468,6 @@ async function executeAnalysis({
     };
     stageStatuses.geminiReview = "limited";
   }
-
-  // STAGE 7 — Scoring & Status Determination
-  onProgress({ step: 9, label: "Step 9 — Calculating transparent score", percent: 92 });
-  const verifiedMatchingSources = sourceEvidences.filter(s =>
-    (s.exactMatches?.length || 0) > 0 ||
-    (s.nearMatches?.length || 0) > 0 ||
-    (s.semanticMatches?.length || 0) > 0
-  );
-  const scoreResult = calculateDocumentScore(processed.tokens, verifiedMatchingSources);
-  verifiedMatchingSources.sort((a, b) => b.similarity - a.similarity);
-
-  const highRiskCount = allMatchedPassages.filter(p => p.type === "EXACT" || (p.similarityScore || 0) >= 85).length;
-
-  // Determine overall status — Gemini failure must NEVER mark the analysis as failed
-  const isLimited = (stageStatuses.webSearch !== "success" && stageStatuses.webSearch !== "local_fallback");
-  const overallStatus = isLimited ? "completed_with_limitations" : "completed";
-  const statusMessage = discovery.mode === "LOCAL_COMPARISON"
-    ? "Web search unavailable. Local similarity analysis completed."
-    : isLimited
-      ? "Analysis completed with limited services."
-      : (discovery.message || "Complete analysis finished successfully.");
 
   const matchingSourcesCount = verifiedMatchingSources.length;
 
@@ -445,11 +506,13 @@ async function executeAnalysis({
       topicalCount: topicalSources.length,
       possibleCount: possibleSources.length,
       matchingCount: matchingSourcesCount,
+      unverifiableCount: unverifiableSources.length,
       reviewed: retrievedSources.length,
       groundingStatus: discovery.groundingStatus || "NOT_TESTED",
       groundingError: discovery.groundingError || null,
       topicalSources,
       possibleSources,
+      unverifiableSources,
       items: verifiedMatchingSources
     },
     matchedPassages: allMatchedPassages,
@@ -465,7 +528,6 @@ async function executeAnalysis({
 
   onProgress({ step: 10, label: "Step 10 — Report ready", percent: 100 });
 
-  // Store in ephemeral session cache only (no permanent history)
   db.setSessionAnalysis(analysisRecord);
 
   logger.logEvent("analysis_completed", {

@@ -42,3 +42,4 @@ test/validation_results.json
 
 # Docker & Container Data
 docker-data/
+data/settings.json

@@ -1,34 +1,51 @@
 /**
- * VeriWrite Level 1 — Exact Match Engine
- * Detects matching n-gram sequences (4, 5, 6, 8, 10, 15 words) and exact phrase overlaps.
- * Enforces lexical specificity to avoid treating short generic common knowledge as plagiarism.
+ * Checkra Level 1 — Multi-Scale Exact Match Engine
+ * Detects consecutive copied sequences using multi-length shingles (5, 7, 9, 12, 15 words)
+ * and forward greedy extension.
+ * Enforces lexical specificity to eliminate false positives on common idioms.
  */
 
-const { tokenize } = require("../document/preprocessor");
+const { tokenize, normalizeUnicode, normalizeQuotesAndApostrophes } = require("../document/preprocessor");
+const { isGenericTerm, STOPWORDS } = require("./vocabularyClassifier");
 
-const STOPWORDS = new Set([
-  "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-  "of", "with", "by", "from", "as", "is", "are", "was", "were", "be",
-  "been", "being", "have", "has", "had", "do", "does", "did", "can"
-]);
-
-const DOMAIN_GENERIC_WORDS = new Set([
-  "machine", "learning", "artificial", "intelligence", "algorithm", "algorithms",
-  "data", "dataset", "datasets", "model", "models", "system", "systems", "process",
-  "processes", "technology", "technologies", "information", "computer", "computers",
-  "science", "scientific", "field", "digital", "modern", "application", "applications",
-  "branch", "subset", "concept", "concepts", "theory", "theories",
-  "monsoon", "season", "seasons", "seasonal", "agriculture", "agricultural", "farming",
-  "farmer", "farmers", "crop", "crops", "harvest", "rainfall", "rain", "production",
-  "state", "states", "country", "countries", "region", "regions", "affect", "affects", "impact", "impacts"
-]);
-
-function hasLexicalSpecificity(phraseTokens) {
-  if (phraseTokens.length >= 10) return true;
-  const nonGeneric = phraseTokens.filter(t => !STOPWORDS.has(t) && !DOMAIN_GENERIC_WORDS.has(t));
-  return nonGeneric.length >= 2;
+/**
+ * Normalizes text for exact matching
+ */
+function normalizeExactText(text) {
+  if (!text) return "";
+  return normalizeQuotesAndApostrophes(normalizeUnicode(text))
+    .toLowerCase()
+    .replace(/[“”"']/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/[ \t\r\n]+/g, " ")
+    .trim();
 }
 
+/**
+ * Converts text into normalized token array
+ */
+function toExactTokens(input) {
+  if (Array.isArray(input)) return input.map(t => String(t).toLowerCase());
+  if (typeof input === "string") {
+    return normalizeExactText(input).split(/\s+/).filter(t => t.length > 0);
+  }
+  return [];
+}
+
+/**
+ * Checks if a matched phrase has sufficient lexical specificity
+ * (rejects common generic phrases like "in the case of modern business")
+ */
+function hasLexicalSpecificity(tokens) {
+  if (tokens.length >= 10) return true;
+  if (tokens.length < 5) return false;
+  const contentTokens = tokens.filter(t => !STOPWORDS.has(t) && !isGenericTerm(t));
+  return contentTokens.length >= 2;
+}
+
+/**
+ * Extracts n-grams of a given length
+ */
 function extractNgrams(tokens, n) {
   const ngrams = new Map();
   for (let i = 0; i <= tokens.length - n; i++) {
@@ -43,36 +60,49 @@ function extractNgrams(tokens, n) {
 
 /**
  * Finds exact sequence overlaps between submitted text and source text
- * @param {string|string[]} submittedTokens 
- * @param {string|string[]} sourceTokens 
- * @param {number} minWords default 6
+ * @param {string|string[]} submittedTokens
+ * @param {string|string[]} sourceTokens
+ * @param {number} minWords default 6 (or 5 for shingle seeds)
+ * @param {string} sourceUrl optional source URL for reporting
  */
-function findExactMatches(submittedTokens, sourceTokens, minWords = 6) {
-  const subTokens = Array.isArray(submittedTokens) ? submittedTokens : tokenize(submittedTokens);
-  const srcTokens = Array.isArray(sourceTokens) ? sourceTokens : tokenize(sourceTokens);
+function findExactMatches(submittedTokens, sourceTokens, minWords = 6, sourceUrl = "") {
+  const subTokens = toExactTokens(submittedTokens);
+  const srcTokens = toExactTokens(sourceTokens);
 
-  if (subTokens.length < minWords || srcTokens.length < minWords) {
-    return { matches: [], totalMatchedTokens: 0, coverageRatio: 0, exactOverlapPercent: 0 };
+  const seedSize = Math.max(5, Math.min(minWords, 6));
+
+  if (subTokens.length < seedSize || srcTokens.length < seedSize) {
+    return {
+      matches: [],
+      totalMatchedTokens: 0,
+      exactMatchedWords: new Set(),
+      coverageRatio: 0,
+      exactOverlapPercent: 0,
+      exactPassages: [],
+      sourceUrls: sourceUrl ? [sourceUrl] : []
+    };
   }
 
-  // Build index for source ngrams
+  // Index source n-grams at seed size
   const srcIndex = new Map();
-  for (let i = 0; i <= srcTokens.length - minWords; i++) {
-    const key = srcTokens.slice(i, i + minWords).join(" ");
-    if (!srcIndex.has(key)) srcIndex.set(key, i);
+  for (let i = 0; i <= srcTokens.length - seedSize; i++) {
+    const key = srcTokens.slice(i, i + seedSize).join(" ");
+    if (!srcIndex.has(key)) {
+      srcIndex.set(key, i);
+    }
   }
 
   const matches = [];
   const matchedTokenIndices = new Set();
   let i = 0;
 
-  while (i <= subTokens.length - minWords) {
-    const key = subTokens.slice(i, i + minWords).join(" ");
+  while (i <= subTokens.length - seedSize) {
+    const key = subTokens.slice(i, i + seedSize).join(" ");
     if (srcIndex.has(key)) {
       let srcStart = srcIndex.get(key);
-      let len = minWords;
+      let len = seedSize;
 
-      // Extend forward as long as tokens continue to match exactly
+      // Extend forward as long as tokens continue to match verbatim
       while (
         i + len < subTokens.length &&
         srcStart + len < srcTokens.length &&
@@ -82,7 +112,6 @@ function findExactMatches(submittedTokens, sourceTokens, minWords = 6) {
       }
 
       const phraseTokens = subTokens.slice(i, i + len);
-      // Require lexical specificity before treating match as plagiarism
       if (hasLexicalSpecificity(phraseTokens)) {
         const matchedPhrase = phraseTokens.join(" ");
         matches.push({
@@ -91,7 +120,8 @@ function findExactMatches(submittedTokens, sourceTokens, minWords = 6) {
           sourceIndex: srcStart,
           length: len,
           phrase: matchedPhrase,
-          confidence: len >= 10 ? "HIGH" : len >= 6 ? "MEDIUM" : "LOW"
+          sourceUrl: sourceUrl || "",
+          confidence: len >= 12 ? "HIGH" : len >= 8 ? "MEDIUM" : "LOW"
         });
 
         for (let k = 0; k < len; k++) {
@@ -99,7 +129,7 @@ function findExactMatches(submittedTokens, sourceTokens, minWords = 6) {
         }
       }
 
-      i += len; // Jump past matched sequence
+      i += len;
     } else {
       i++;
     }
@@ -111,13 +141,18 @@ function findExactMatches(submittedTokens, sourceTokens, minWords = 6) {
   return {
     matches,
     totalMatchedTokens,
+    exactMatchedWords: matchedTokenIndices,
     coverageRatio: Math.min(1, coverageRatio),
-    exactOverlapPercent: Math.round(Math.min(100, coverageRatio * 100))
+    exactOverlapPercent: Math.round(Math.min(100, coverageRatio * 100)),
+    exactPassages: matches,
+    sourceUrls: sourceUrl ? [sourceUrl] : []
   };
 }
 
 module.exports = {
   findExactMatches,
   extractNgrams,
-  hasLexicalSpecificity
+  hasLexicalSpecificity,
+  normalizeExactText,
+  toExactTokens
 };

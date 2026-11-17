@@ -7,7 +7,9 @@
 const fs = require("fs");
 const path = require("path");
 
-const SETTINGS_PATH = path.join(__dirname, "../../data/settings.json");
+const SETTINGS_PATH = process.env.VERCEL
+  ? path.join("/tmp", "checkra-settings.json")
+  : path.join(__dirname, "../../data/settings.json");
 
 const DEFAULT_SETTINGS = {
   geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",

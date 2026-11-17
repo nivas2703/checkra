@@ -1,7 +1,19 @@
 /**
- * VeriWrite Similarity Scoring & Grade Engine
- * Documented transparent algorithm based strictly on verified evidence.
- * Excludes generic topical similarity from plagiarism scoring.
+ * Checkra Similarity Scoring & Grade Engine
+ * Documented, mathematically transparent algorithm based strictly on verified textual evidence.
+ *
+ * Scoring Formula:
+ * Overall Score = min(100,
+ *   (Exact Match Word Coverage * 0.65) +
+ *   (Near Match Word Coverage * 0.25) +
+ *   (Semantic Paraphrase Coverage * 0.10)
+ * )
+ *
+ * Invariants:
+ * 1. Zero evidence -> strictly 0% similarity.
+ * 2. 100% verbatim copy (exact + near + semantic) -> 90-100% similarity.
+ * 3. Exact copied fraction + original fraction -> strictly proportional.
+ * 4. Topical similarity without textual derivation does NOT contribute to score.
  */
 
 function calculateGrade(score) {
@@ -14,17 +26,14 @@ function calculateGrade(score) {
 /**
  * Calculates overall document similarity score from verified source evidence.
  *
- * Formula:
- * Overall Score = min(100,
- *   (Exact Match Word Coverage * 0.65) +
- *   (Near Match Word Coverage * 0.25) +
- *   (Semantic Paraphrase Coverage * 0.10)
- * )
- *
- * Topical similarity without textual derivation evidence does NOT contribute to plagiarism score.
+ * @param {string[]|number} documentTokensOrCount - Array of tokens or total word count
+ * @param {Array} sourceEvidences - Verified source evidence objects
+ * @param {Array} eligibleSentences - Preprocessed eligible sentences with word spans
  */
-function calculateDocumentScore(documentTokens, sourceEvidences = []) {
-  const totalDocWords = Math.max(1, documentTokens.length);
+function calculateDocumentScore(documentTokensOrCount, sourceEvidences = [], eligibleSentences = []) {
+  const totalDocWords = Math.max(1, Array.isArray(documentTokensOrCount)
+    ? documentTokensOrCount.length
+    : (typeof documentTokensOrCount === "number" ? documentTokensOrCount : 1));
 
   if (!sourceEvidences.length) {
     return {
@@ -32,6 +41,9 @@ function calculateDocumentScore(documentTokens, sourceEvidences = []) {
       grade: "A",
       gradeLabel: "Checkra similarity grade",
       coverage: { exactPercent: 0, nearPercent: 0, semanticPercent: 0 },
+      exactWordsCount: 0,
+      nearWordsCount: 0,
+      semanticWordsCount: 0,
       methodology: "Score is 0% because no matching source content was retrieved and verified."
     };
   }
@@ -47,29 +59,36 @@ function calculateDocumentScore(documentTokens, sourceEvidences = []) {
       verifiedSourcesCount++;
     }
 
-    // Exact matches (Level 1)
+    // 1. Exact Matches (weight = 65%)
     (src.exactMatches || []).forEach(m => {
       const idx = m.submittedIndex !== undefined ? m.submittedIndex : 0;
       for (let i = 0; i < (m.length || 0); i++) {
-        exactWordsMatched.add(idx + i);
+        if (idx + i < totalDocWords) {
+          exactWordsMatched.add(idx + i);
+        }
       }
     });
 
-    // Near matches (Level 2)
+    // 2. Near Matches (weight = 25%)
     (src.nearMatches || []).forEach(m => {
-      const wordsInSentence = (m.submittedSentence || "").split(/\s+/).length;
+      const wordsInSentence = (m.submittedSentence || "").split(/\s+/).length || 8;
       const sentIdx = m.submittedIndex !== undefined ? m.submittedIndex : 0;
       for (let i = 0; i < wordsInSentence; i++) {
-        nearWordsMatched.add(sentIdx * 1000 + i);
+        const key = sentIdx * 1000 + i;
+        nearWordsMatched.add(key);
       }
     });
 
-    // Semantic matches (Level 3) — ONLY genuine derivation evidence, weighted by match strength
+    // 3. Semantic Paraphrase Matches (weight = 10%)
     (src.semanticMatches || []).forEach(m => {
       if (m.isPlagiarismEvidence !== false) {
-        const wordsInSentence = (m.submittedSentence || "").split(/\s+/).length;
+        const wordsInSentence = (m.submittedSentence || "").split(/\s+/).length || 8;
         const sentIdx = m.submittedIndex !== undefined ? m.submittedIndex : 0;
-        const matchWeight = (m.similarityScore || 0) / 100;
+        const rawSim = m.rawSemanticSimilarity !== undefined
+          ? m.rawSemanticSimilarity
+          : ((m.similarityScore || 100) / 100);
+        const matchWeight = Math.min(1.0, Math.max(0.40, rawSim));
+
         for (let i = 0; i < wordsInSentence; i++) {
           const key = sentIdx * 1000 + i;
           const prev = semanticWordWeights.get(key) || 0;
@@ -83,28 +102,32 @@ function calculateDocumentScore(documentTokens, sourceEvidences = []) {
 
   const exactRatio = Math.min(1, exactWordsMatched.size / totalDocWords);
   const nearRatio = Math.min(1, nearWordsMatched.size / totalDocWords);
-  
+
   let totalSemanticWeight = 0;
   for (const w of semanticWordWeights.values()) {
     totalSemanticWeight += w;
   }
   const semanticRatio = Math.min(1, totalDocWords > 0 ? (totalSemanticWeight / totalDocWords) : 0);
 
-  // Deterministic formula: 0.65 Exact + 0.25 Near + 0.10 Semantic
+  // Transparent scoring formula: 0.65 Exact + 0.25 Near + 0.10 Semantic
   const rawScore = (exactRatio * 65) + (nearRatio * 25) + (semanticRatio * 10);
   const score = Math.min(100, Math.round(rawScore));
   const grade = calculateGrade(score);
 
-  const methodology = `Score derived strictly from confirmed textual evidence: ${Math.round(exactRatio * 100)}% exact word overlap (weight 65%), ${Math.round(nearRatio * 100)}% near-match paraphrase overlap (weight 25%), and ${Math.round(semanticRatio * 100)}% similarity-weighted semantic paraphrase coverage (weight 10%) across ${verifiedSourcesCount} verified source(s). Topical similarity and generic domain vocabulary are excluded from similarity scoring. Similarity is not, by itself, a determination of plagiarism or academic misconduct.`;
+  const exactPercent = Math.min(100, Math.round(exactRatio * 100));
+  const nearPercent = Math.min(100, Math.round(nearRatio * 100));
+  const semanticPercent = Math.min(100, Math.round(semanticRatio * 100));
+
+  const methodology = `Score derived strictly from confirmed textual evidence: ${exactPercent}% exact word overlap (weight 65%), ${nearPercent}% near-match paraphrase overlap (weight 25%), and ${semanticPercent}% similarity-weighted semantic paraphrase coverage (weight 10%) across ${verifiedSourcesCount} verified source(s). Topical similarity and generic domain vocabulary are excluded from similarity scoring.`;
 
   return {
     score,
     grade,
     gradeLabel: "Checkra similarity grade",
     coverage: {
-      exactPercent: Math.round(exactRatio * 100),
-      nearPercent: Math.round(nearRatio * 100),
-      semanticPercent: Math.round(semanticRatio * 100)
+      exactPercent,
+      nearPercent,
+      semanticPercent
     },
     exactWordsCount: exactWordsMatched.size,
     nearWordsCount: nearWordsMatched.size,

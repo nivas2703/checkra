@@ -1328,8 +1328,8 @@ header {
                 <div class="step-item" id="step-6"><span class="step-num">6</span> Exact match sequence comparison</div>
                 <div class="step-item" id="step-7"><span class="step-num">7</span> Near & paraphrase comparison</div>
                 <div class="step-item" id="step-8"><span class="step-num">8</span> Semantic vector similarity</div>
-                <div class="step-item" id="step-9"><span class="step-num">9</span> Gemini AI evidence review</div>
-                <div class="step-item" id="step-10"><span class="step-num">10</span> Score calculation & report seal</div>
+                <div class="step-item" id="step-9"><span class="step-num">9</span> Core score calculation & integrity verification</div>
+                <div class="step-item" id="step-10"><span class="step-num">10</span> Optional AI evidence review & final report</div>
               </div>
 
               <!-- Score Card Snapshot -->
@@ -1655,6 +1655,36 @@ header {
 </footer>
 
 <script>
+// Robust API Response Parser - guards against non-JSON bodies (e.g. Vercel deployment/504 errors)
+async function parseApiResponse(res) {
+  const contentType = res.headers.get("content-type") || "";
+  let data = null;
+
+  if (contentType.includes("application/json")) {
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      throw new Error("Unable to parse server response as JSON. Please check connection and retry.");
+    }
+  } else {
+    const rawText = await res.text();
+    if (!res.ok) {
+      if (rawText.includes("An error occurred with your deployment") || res.status === 504 || res.status === 502) {
+        throw new Error(`Serverless execution timeout or gateway error (HTTP ${res.status}). The document may be too large or the server timed out.`);
+      }
+      throw new Error(`Server returned HTTP ${res.status} (${res.statusText || "Unexpected response"}).`);
+    }
+    throw new Error(`Server returned unexpected format (${contentType || "text"}).`);
+  }
+
+  if (!res.ok || data.success === false) {
+    const errorMsg = data.error?.message || data.error || (typeof data.message === "string" ? data.message : `HTTP ${res.status}`);
+    throw new Error(errorMsg);
+  }
+
+  return data;
+}
+
 // Centralized API Client
 const api = {
   async analyze(payload) {
@@ -1663,11 +1693,7 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok || data.success === false) {
-      throw new Error(data.error?.message || data.error || `HTTP ${res.status}`);
-    }
-    return data;
+    return await parseApiResponse(res);
   },
 
   async rewrite(payload) {
@@ -1676,11 +1702,7 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok || data.success === false) {
-      throw new Error(data.error?.message || `HTTP ${res.status}`);
-    }
-    return data;
+    return await parseApiResponse(res);
   },
 
   async grammar(payload) {
@@ -1689,11 +1711,7 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok || data.success === false) {
-      throw new Error(data.error?.message || `HTTP ${res.status}`);
-    }
-    return data;
+    return await parseApiResponse(res);
   },
 
   async extract(formData) {
@@ -1701,21 +1719,17 @@ const api = {
       method: "POST",
       body: formData
     });
-    const data = await res.json();
-    if (!res.ok || data.success === false) {
-      throw new Error(data.error?.message || `HTTP ${res.status}`);
-    }
-    return data;
+    return await parseApiResponse(res);
   },
 
   async health() {
     const res = await fetch("/api/health");
-    return await res.json();
+    return await parseApiResponse(res);
   },
 
   async testDocument() {
     const res = await fetch("/api/test-document");
-    return await res.json();
+    return await parseApiResponse(res);
   }
 };
 
@@ -1905,11 +1919,14 @@ async function startAnalysis() {
     completeAllPipelineSteps();
     renderAnalysisResults(result);
   } catch (err) {
+    if (pipelineInterval) clearInterval(pipelineInterval);
     resetProgressSteps();
     $("analysis-badge").textContent = "Analysis Failed";
     $("analysis-badge").style.background = "rgba(244,63,94,0.2)";
     $("analysis-badge").style.color = "#fecdd3";
-    alert("Checkra analysis error: " + err.message);
+    $("quick-score-card").style.display = "block";
+    $("status-message-banner").innerHTML = `<span style="color:#f43f5e; font-weight:700;">Checkra Analysis Notice:</span> ${escapeHtml(err.message)}`;
+    console.error("Checkra analysis error:", err);
   }
 }
 
@@ -1960,9 +1977,11 @@ function renderAnalysisResults(analysis) {
 
   if (score === 0) {
     if (analysis.statusMessage && analysis.statusMessage.includes("Web search unavailable")) {
-      $("status-message-banner").innerHTML = '<strong>Web search unavailable. Local similarity analysis completed.</strong> 0% similarity detected across verified matching evidence.';
+      $("status-message-banner").innerHTML = '<strong>Web search unavailable. Local comparison completed.</strong> 0% verified similarity found in the sources successfully checked.';
+    } else if (analysis.statusMessage && analysis.statusMessage.includes("No external sources could be verified")) {
+      $("status-message-banner").textContent = "No external sources could be verified in this analysis.";
     } else {
-      $("status-message-banner").textContent = "0% similarity detected across verified matching evidence.";
+      $("status-message-banner").textContent = "0% verified similarity found in the sources successfully checked.";
     }
   } else {
     $("status-message-banner").textContent = analysis.statusMessage || "Similarity analysis completed successfully.";
@@ -2012,8 +2031,14 @@ function renderAnalysisResults(analysis) {
 
 // Render Matched Passages
 function renderPassagesTab(analysis) {
+  const sim = (analysis && analysis.similarity) ? analysis.similarity : {
+    score: 0,
+    grade: "A",
+    gradeLabel: "Minimal / Independent",
+    coverage: { exactPercent: 0, nearPercent: 0, semanticPercent: 0 }
+  };
   const originalText = $("doc-text").value;
-  const passages = analysis.matchedPassages || [];
+  const passages = (analysis && analysis.matchedPassages) ? analysis.matchedPassages : [];
 
   if (!passages.length) {
     const isSearchUnavailable = analysis.statusMessage && analysis.statusMessage.includes("Web search unavailable");
@@ -2022,7 +2047,7 @@ function renderPassagesTab(analysis) {
       : '';
     $("highlighted-doc-box").innerHTML = `
       <div style="padding:16px; border-radius:8px; background:rgba(124,58,237,0.06); border:1px solid rgba(124,58,237,0.2);">
-        <div style="color:var(--text-primary); font-weight:700; font-size:14px;">0% similarity detected across verified matching evidence.</div>
+        <div style="color:var(--text-primary); font-weight:700; font-size:14px;">0% verified similarity found in the sources successfully checked.</div>
         <div style="color:var(--text-secondary); font-size:13px; margin-top:6px;">No verified matching passages found. The submitted text shows no significant overlap with evaluated sources.</div>
         ${subNotice}
       </div>
@@ -2031,7 +2056,7 @@ function renderPassagesTab(analysis) {
     $("evidence-panel").innerHTML = `
       <div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--bg-canvas); border-radius:12px;">
         <div style="font-size:18px; font-weight:700; color:var(--text-primary); margin-bottom:8px;">0% Similarity Detected</div>
-        <p style="font-size:13px; margin-bottom:14px;">0% similarity detected across verified matching evidence.</p>
+        <p style="font-size:13px; margin-bottom:14px;">0% verified similarity found in the sources successfully checked.</p>
         <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; font-size:12px; color:var(--text-secondary); margin-top:12px;">
           <span>Retrieved: <b>${analysis.sources?.retrievedCount ?? 0}</b></span>
           <span>Topical: <b>${analysis.sources?.topicalCount ?? 0}</b></span>
@@ -2157,7 +2182,7 @@ async function retryAiReview() {
       method: "POST",
       headers: { "Content-Type": "application/json" }
     });
-    const data = await res.json();
+    const data = await parseApiResponse(res);
     if (data.aiReview) {
       state.currentAnalysis.aiReview = data.aiReview;
       renderPassagesTab(state.currentAnalysis);

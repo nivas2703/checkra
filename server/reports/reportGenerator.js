@@ -69,10 +69,16 @@ async function generateReportPackage(analysis, baseUrl = "") {
 }
 
 function generatePrintableHtml(data, qrDataUrl) {
-  const doc = data.document;
-  const sim = data.similarity;
-  const sources = data.sources || [];
-  const passages = data.matchedPassages || [];
+  const doc = data?.document || {};
+  const sim = data?.similarity || {
+    score: 0,
+    grade: "A",
+    gradeLabel: "Minimal / Independent",
+    coverage: { exactPercent: 0, nearPercent: 0, semanticPercent: 0 },
+    methodology: ""
+  };
+  const sources = data?.sources || [];
+  const passages = data?.matchedPassages || [];
 
   // Group sources by classification
   const byType = {};
