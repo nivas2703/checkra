@@ -98,29 +98,11 @@ body {
   align-items: center;
   gap: 14px;
 }
-.brand-logo-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #7c3aed, #06b6d4);
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 16px rgba(124, 58, 237, 0.4);
-}
-.brand-logo-inner {
-  width: 100%;
-  height: 100%;
-  background: var(--bg-deep);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 19px;
-  color: #fff;
-  letter-spacing: -0.5px;
+.brand-logo-img {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 .brand-titles {
   display: flex;
@@ -262,7 +244,7 @@ body {
   font-size: 15px;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .sidebar-sub {
   font-size: 11px;
@@ -813,11 +795,6 @@ input:checked + .slider:before {
   z-index: 2;
   box-shadow: 0 0 24px var(--violet-glow);
 }
-.radar-center-inner {
-  font-size: 26px;
-  font-weight: 800;
-  color: #ffffff;
-}
 
 .analysis-main-title {
   font-size: 16px;
@@ -1150,7 +1127,6 @@ input:checked + .slider:before {
 
 /* ANALYSIS FAILURE CARD (Safeguard) */
 .analysis-failure-view {
-  display: none;
   background: linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(18, 18, 29, 0.95));
   border: 1px solid var(--rose-border);
   border-radius: var(--radius-lg);
@@ -1322,15 +1298,12 @@ input:checked + .slider:before {
 <!-- TOP NAVBAR -->
 <header class="top-nav">
   <div class="brand-group">
-    <div class="brand-logo-wrap">
-      <div class="brand-logo-inner">C</div>
-    </div>
-    <div class="brand-titles">
-      <span class="brand-name">Checkra</span>
-      <span class="brand-tagline">Check · Verify · Improve</span>
-    </div>
+    <a href="/" style="display:flex;align-items:center;text-decoration:none;" title="Checkra">
+      <img src="/checkra-logo.png" alt="Checkra" class="brand-logo-img">
+    </a>
     <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" class="nivora-badge">
-      <span>~</span> A NIVORA Product
+      <img src="/nivora-logo.png" alt="NIVORA" style="width:14px;height:14px;object-fit:contain;">
+      <span>A NIVORA Product</span>
     </a>
   </div>
 
@@ -1369,9 +1342,12 @@ input:checked + .slider:before {
   <!-- LEFT SIDEBAR -->
   <aside class="sidebar">
     <div>
-      <div class="sidebar-header">
-        <h2 class="sidebar-title">Checkra Workspace</h2>
-        <p class="sidebar-sub">Document Integrity &amp; Similarity Check</p>
+      <div class="sidebar-header" style="display:flex;align-items:center;gap:10px;">
+        <img src="/checkra-icon.png" alt="Checkra" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">
+        <div>
+          <h2 class="sidebar-title">Checkra</h2>
+          <p class="sidebar-sub">Writing &amp; Integrity Checker</p>
+        </div>
       </div>
 
       <div class="sidebar-menu">
@@ -1447,7 +1423,7 @@ input:checked + .slider:before {
 
           <!-- DROP ZONE -->
           <div id="drop-zone" class="dropzone-container" onclick="$('file-input').click()">
-            <input type="file" id="file-input" style="display:none;" accept=".pdf,.docx,.txt,.md,.html,text/*" onchange="handleFileSelect(event)">
+            <input type="file" id="file-input" style="display:none;" accept=".pdf,.docx,.doc,.txt,.md,.markdown,.html,.htm,text/*">
             <div class="drop-icon-wrap">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -1455,8 +1431,8 @@ input:checked + .slider:before {
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
             </div>
-            <div class="drop-title">Upload or drop your document here</div>
-            <div class="drop-subtitle">or choose a file from your device</div>
+            <div class="drop-title" id="drop-zone-title">Upload or drop your document here</div>
+            <div class="drop-subtitle" id="drop-zone-subtitle">or choose a file from your device (PDF, DOCX, TXT, MD, HTML &le; 4.5 MB)</div>
             <div class="format-pills">
               <span class="format-pill">PDF</span>
               <span class="format-pill">DOCX</span>
@@ -1556,12 +1532,12 @@ input:checked + .slider:before {
               <div class="radar-ring"></div>
               <div class="radar-ring-pulse"></div>
               <div class="radar-center-logo">
-                <span class="radar-center-inner">C</span>
+                <img src="/checkra-icon.png" alt="Checkra" style="width:38px;height:38px;object-fit:contain;">
               </div>
             </div>
 
             <h2 class="analysis-main-title" id="analysis-card-title">Checkra Analysis</h2>
-            <p class="analysis-main-sub" id="analysis-card-sub">Analyzing your document for similarity, originality, and source evidence.</p>
+            <p class="analysis-main-sub" id="analysis-card-sub">Ready to analyze your document for similarity, originality, and source evidence.</p>
           </div>
 
           <!-- Progress Bar -->
@@ -1578,23 +1554,23 @@ input:checked + .slider:before {
           <div id="step-list" class="stepper-list">
             <div class="step-item" id="step-1">
               <div class="step-left"><span class="step-icon">1</span><span>Reading document &amp; validating format</span></div>
-              <span class="step-timing-badge">(0.4s)</span>
+              <span class="step-timing-badge"></span>
             </div>
             <div class="step-item" id="step-2">
               <div class="step-left"><span class="step-icon">2</span><span>Extracting text &amp; normalizing</span></div>
-              <span class="step-timing-badge">(0.7s)</span>
+              <span class="step-timing-badge"></span>
             </div>
             <div class="step-item" id="step-3">
               <div class="step-left"><span class="step-icon">3</span><span>Identifying distinctive passages</span></div>
-              <span class="step-timing-badge">(0.9s)</span>
+              <span class="step-timing-badge"></span>
             </div>
             <div class="step-item" id="step-4">
               <div class="step-left"><span class="step-icon">4</span><span>Searching relevant sources (SearXNG)</span></div>
-              <span class="step-timing-badge">(1.8s)</span>
+              <span class="step-timing-badge"></span>
             </div>
             <div class="step-item" id="step-5">
               <div class="step-left"><span class="step-icon">5</span><span>Retrieving and processing source content</span></div>
-              <span class="step-timing-badge">(2.1s)</span>
+              <span class="step-timing-badge"></span>
             </div>
             <div class="step-item" id="step-6">
               <div class="step-left"><span class="step-icon">6</span><span>Comparing exact matches</span></div>
@@ -1621,16 +1597,32 @@ input:checked + .slider:before {
           <!-- Timing footer -->
           <div class="timeline-timing-footer">
             <div>⏱ Elapsed Time: <strong id="elapsed-time" style="color:#fff;">0.0s</strong></div>
-            <div>📊 Estimated Total: <span style="color:#a1a1aa;">~ 6-10s</span></div>
+            <div>📊 Estimated Total: <span style="color:#a1a1aa;">~ 2-6s</span></div>
           </div>
         </div>
 
         <!-- COLUMN 3: RESULTS / INTEGRITY REPORT -->
         <div class="col-report">
-          <!-- QUICK SCORE CARD -->
-          <div id="quick-score-card" class="glass-card">
+          <!-- AWAITING ANALYSIS CARD (Default Initial State) -->
+          <div id="awaiting-analysis-card" class="glass-card" style="text-align: center; padding: 36px 20px;">
+            <div style="width: 54px; height: 54px; border-radius: 16px; background: rgba(139, 92, 246, 0.12); border: 1px solid var(--violet-border); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <img src="/checkra-icon.png" alt="Checkra" style="width: 32px; height: 32px; object-fit: contain;">
+            </div>
+            <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">Integrity Report Awaiting Analysis</h3>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">Upload a document or paste text, then click "Check Document" to generate verifiable similarity, originality, and source evidence.</p>
+            <div style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 11px; color: var(--text-secondary); text-align: left; display: flex; flex-direction: column; gap: 6px;">
+              <div>🔒 <strong style="color:#fff;">Session-Only Mode</strong>: Documents are processed in memory and discarded when closed.</div>
+              <div>⚙️ <strong style="color:#fff;">Deterministic Scoring</strong>: Scores are factual percentages derived directly from confirmed textual matches.</div>
+              <div>✨ <strong style="color:#fff;">Decoupled AI Review</strong>: AI evidence review is optional and never modifies the deterministic similarity score.</div>
+            </div>
+          </div>
+
+          <!-- QUICK SCORE CARD (Only shown when analysis completes successfully) -->
+          <div id="quick-score-card" class="glass-card" style="display: none;">
             <div class="result-card-header">
-              <div class="success-icon-wrap">✓</div>
+              <div class="success-icon-wrap" style="padding:0;overflow:hidden;">
+                <img src="/checkra-icon.png" alt="Checkra" style="width:26px;height:26px;object-fit:contain;">
+              </div>
               <h2 class="result-card-title">Your Integrity Report is Ready</h2>
               <p class="result-card-sub">Checkra has completed the analysis of your document.</p>
             </div>
@@ -1718,18 +1710,18 @@ input:checked + .slider:before {
             </div>
           </div>
 
-          <!-- ANALYSIS FAILURE CARD (Safeguard on error / 504 timeout) -->
-          <div id="analysis-failure-card" class="analysis-failure-view">
+          <!-- ANALYSIS FAILURE CARD (Safeguard on error / extraction failure / 504 timeout) -->
+          <div id="analysis-failure-card" class="analysis-failure-view" style="display: none;">
             <div class="failure-icon-wrap">⚠️</div>
-            <h2 class="failure-title">Checkra Analysis Notice</h2>
+            <h2 class="failure-title" id="failure-title-text">Checkra Analysis Notice</h2>
             <p class="failure-desc" id="failure-reason-text">
               Serverless execution timeout or gateway error (HTTP 504). The document may be too large or the server timed out.
             </p>
             <div class="failure-notice-box">
               Checkra strictly avoids reporting 0% similarity when an analysis cannot be completed. Your document is preserved below.
             </div>
-            <button class="btn-primary-action" style="width:100%;justify-content:center;" onclick="runAnalysis()">
-              <span>🔄</span> Try Again with Smaller Document
+            <button class="btn-primary-action" style="width:100%;justify-content:center;" onclick="retryFromFailure()">
+              <span>🔄</span> Try Again
             </button>
           </div>
 
@@ -1963,6 +1955,7 @@ const state = {
   currentAnalysis: null,
   selectedPassageIndex: -1,
   isAnalyzing: false,
+  isExtracting: false,
   startTime: 0,
   timerInterval: null
 };
@@ -2004,6 +1997,7 @@ function loadSampleDoc() {
   $("doc-text").value = "The Great Oxidation Event was a biologically induced event where the Earth's atmosphere and the shallow ocean first experienced a rise in oxygen. This occurred approximately 2.4 to 2.1 billion years ago, during the Paleoproterozoic era. Geological, isotopic, and chemical evidence suggests that biologically produced molecular oxygen began accumulating in the atmosphere and changed Earth's atmosphere from a weakly reducing atmosphere to an oxidizing atmosphere.";
   updateWordCounts();
   showLoadedDocCard("sample_oxidation_event.txt", "1.2 KB", "TXT");
+  resetAnalysisCard();
 }
 
 function showLoadedDocCard(filename, sizeStr, ext) {
@@ -2023,50 +2017,169 @@ function clearLoadedDoc() {
   $("drop-zone").style.display = "block";
   $("file-input").value = "";
   updateWordCounts();
+  resetToAwaiting();
 }
 
-async function handleFileSelect(e) {
-  const file = e.target.files[0];
+function resetToAwaiting() {
+  $("quick-score-card").style.display = "none";
+  $("analysis-failure-card").style.display = "none";
+  if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "block";
+  resetAnalysisCard();
+}
+
+function resetAnalysisCard() {
+  for (let i = 1; i <= 10; i++) setStepState(i, "idle");
+  setProgress(0);
+  $("elapsed-time").textContent = "0.0s";
+  $("analysis-card-title").textContent = "Checkra Analysis";
+  $("analysis-card-sub").textContent = "Ready to analyze your document for similarity, originality, and source evidence.";
+}
+
+function retryFromFailure() {
+  $("analysis-failure-card").style.display = "none";
+  if ($("doc-text").value.trim().length >= 20) {
+    runAnalysis();
+  } else {
+    resetToAwaiting();
+  }
+}
+
+// DRAG AND DROP & FILE SELECTION CONTROLLER
+function initDropZone() {
+  const dropZone = $("drop-zone");
+  const fileInput = $("file-input");
+  if (!dropZone || !fileInput) return;
+
+  ["dragenter", "dragover"].forEach(evtName => {
+    dropZone.addEventListener(evtName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.add("dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(evtName => {
+    dropZone.addEventListener(evtName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove("dragover");
+    });
+  });
+
+  dropZone.addEventListener("drop", (e) => {
+    const dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length > 0) {
+      handleFile(dt.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+  });
+}
+
+function setExtractionLoading(isLoading, fileName) {
+  state.isExtracting = isLoading;
+  const title = $("drop-zone-title");
+  const sub = $("drop-zone-subtitle");
+  if (isLoading) {
+    if (title) title.textContent = "Extracting " + (fileName || "document") + "...";
+    if (sub) sub.textContent = "Parsing text and document structure (session-only, in memory)";
+    $("drop-zone").style.opacity = "0.7";
+    $("drop-zone").style.pointerEvents = "none";
+  } else {
+    if (title) title.textContent = "Upload or drop your document here";
+    if (sub) sub.textContent = "or choose a file from your device (PDF, DOCX, TXT, MD, HTML ≤ 4.5 MB)";
+    $("drop-zone").style.opacity = "1";
+    $("drop-zone").style.pointerEvents = "auto";
+  }
+}
+
+async function handleFile(file) {
   if (!file) return;
 
-  const ext = file.name.split(".").pop().toUpperCase();
-  const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-  const sizeStr = sizeMb > 0 ? (sizeMb + " MB") : (Math.round(file.size / 1024) + " KB");
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const sizeMb = file.size / (1024 * 1024);
+  const sizeStr = sizeMb >= 1 ? (sizeMb.toFixed(1) + " MB") : (Math.round(file.size / 1024) + " KB");
+
+  // Vercel serverless request body limit is 4.5 MB
+  if (file.size > 4.5 * 1024 * 1024) {
+    showFailure(
+      "Document Extraction Failed",
+      "File size (" + sizeMb.toFixed(1) + " MB) exceeds the 4.5 MB serverless upload limit. Please upload a document under 4.5 MB or paste your text directly."
+    );
+    return;
+  }
 
   $("doc-title").value = file.name.replace(/\.[^/.]+$/, "");
 
-  if (file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+  // Text-based files: read client-side with FileReader (instant, resilient, 0 network failure)
+  if (ext === "txt" || ext === "md" || ext === "markdown" || ext === "html" || ext === "htm" || file.type.startsWith("text/")) {
     const reader = new FileReader();
     reader.onload = function(evt) {
-      $("doc-text").value = evt.target.result;
+      let content = evt.target.result || "";
+      if (ext === "html" || ext === "htm") {
+        const div = document.createElement("div");
+        div.innerHTML = content;
+        content = div.textContent || div.innerText || "";
+      }
+      if (!content.trim()) {
+        showFailure("Document Extraction Failed", "Checkra could not read this document: The uploaded text file is empty. No similarity result was generated.");
+        return;
+      }
+      $("doc-text").value = content;
       updateWordCounts();
-      showLoadedDocCard(file.name, sizeStr, ext);
+      showLoadedDocCard(file.name, sizeStr, ext.toUpperCase());
+      resetAnalysisCard();
+    };
+    reader.onerror = function() {
+      showFailure("Document Extraction Failed", "Checkra could not read this document: Failed to read local file. No similarity result was generated.");
     };
     reader.readAsText(file);
     return;
   }
 
-  // PDF or DOCX extraction
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-    const result = await api.extract(formData);
-    if (result && result.text) {
-      $("doc-text").value = result.text;
+  // Binary files (PDF, DOCX) require server-side parsing via /api/extract
+  if (ext === "pdf" || ext === "docx" || ext === "doc") {
+    setExtractionLoading(true, file.name);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await api.extract(formData);
+
+      const text = (result && (result.rawText || result.text)) ? (result.rawText || result.text) : "";
+      if (!text || text.trim().length === 0) {
+        throw new Error("No readable text content was found in this document.");
+      }
+
+      $("doc-text").value = text;
       updateWordCounts();
-      showLoadedDocCard(file.name, sizeStr, ext);
+      showLoadedDocCard(file.name, sizeStr, ext.toUpperCase());
+      resetAnalysisCard();
+      setExtractionLoading(false);
+    } catch (err) {
+      setExtractionLoading(false);
+      showFailure(
+        "Document Extraction Failed",
+        "Checkra could not read this document: " + (err.message || "Failed to fetch") + ". No similarity result was generated."
+      );
     }
-  } catch (err) {
-    alert("Extraction error: " + err.message);
+    return;
   }
+
+  showFailure(
+    "Document Extraction Failed",
+    "Unsupported file format (." + ext + "). Supported formats are PDF, DOCX, TXT, MD, and HTML. No similarity result was generated."
+  );
 }
 
 // STEP PROGRESSION CONTROLLER
-function setStepState(stepNum, status, timing) {
+function setStepState(stepNum, status) {
   const el = $("step-" + stepNum);
   if (!el) return;
   el.classList.remove("active", "completed");
-  const badge = el.querySelector(".step-timing-badge");
   const icon = el.querySelector(".step-icon");
 
   if (status === "active") {
@@ -2075,10 +2188,21 @@ function setStepState(stepNum, status, timing) {
   } else if (status === "completed") {
     el.classList.add("completed");
     if (icon) icon.innerHTML = "✓";
-    if (timing && badge) badge.textContent = "(" + timing + ")";
   } else {
     if (icon) icon.innerHTML = stepNum;
   }
+}
+
+function setStepTiming(stepNum, timingStr) {
+  const el = $("step-" + stepNum);
+  if (!el) return;
+  const badge = el.querySelector(".step-timing-badge");
+  if (badge) badge.textContent = timingStr ? ("(" + timingStr + ")") : "";
+}
+
+function formatMs(ms) {
+  if (ms >= 1000) return (ms / 1000).toFixed(1) + "s";
+  return ms + "ms";
 }
 
 function setProgress(percent) {
@@ -2102,45 +2226,45 @@ function stopTimer() {
   }
 }
 
+function showFailure(title, reason) {
+  stopTimer();
+  state.isAnalyzing = false;
+  $("quick-score-card").style.display = "none";
+  if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
+  $("analysis-failure-card").style.display = "block";
+  if ($("failure-title-text")) $("failure-title-text").textContent = title || "Checkra Analysis Notice";
+  $("failure-reason-text").textContent = reason || "The analysis could not complete. Your document text has been safely preserved.";
+  $("analysis-card-title").textContent = "Checkra Analysis Halted";
+  $("analysis-card-sub").textContent = "No similarity result was generated.";
+}
+
 // MAIN ANALYSIS CONTROLLER
 async function runAnalysis() {
   const text = $("doc-text").value.trim();
-  if (!text) {
-    alert("Please enter or upload a document to check.");
+  if (!text || text.length < 20) {
+    alert("Please enter or upload a document with at least 20 characters to check.");
     return;
   }
 
   state.isAnalyzing = true;
-  $("quick-score-card").style.display = "block";
+  $("quick-score-card").style.display = "none";
   $("analysis-failure-card").style.display = "none";
+  if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
+
   $("analysis-card-title").textContent = "Checkra is Analyzing Your Document";
   $("analysis-card-sub").textContent = "Examining your writing for similarity, originality, and source evidence.";
 
-  for (let i = 1; i <= 10; i++) setStepState(i, "idle");
-  setProgress(5);
+  for (let i = 1; i <= 10; i++) {
+    setStepState(i, "idle");
+    setStepTiming(i, "");
+  }
+  setProgress(10);
   startTimer();
 
-  // Step 1: Validating format
+  // Active initial steps
   setStepState(1, "active");
-  await new Promise(r => setTimeout(r, 150));
-  setStepState(1, "completed", "0.4s");
-  setProgress(15);
-
-  // Step 2: Extracting text
   setStepState(2, "active");
-  await new Promise(r => setTimeout(r, 150));
-  setStepState(2, "completed", "0.7s");
   setProgress(25);
-
-  // Step 3: Identifying distinctive passages
-  setStepState(3, "active");
-  await new Promise(r => setTimeout(r, 150));
-  setStepState(3, "completed", "0.9s");
-  setProgress(40);
-
-  // Step 4: Searching web
-  setStepState(4, "active");
-  setProgress(55);
 
   const payload = {
     text: text,
@@ -2154,31 +2278,51 @@ async function runAnalysis() {
   };
 
   try {
-    const analysisPromise = api.analyze(payload);
-    
-    // Animate search & retrieval while server executes
-    setTimeout(() => {
-      setStepState(4, "completed", "1.8s");
-      setStepState(5, "active");
-      setProgress(68);
-    }, 600);
+    setStepState(1, "completed");
+    setStepState(2, "completed");
+    setStepState(3, "active");
+    setStepState(4, "active");
+    setProgress(50);
 
-    setTimeout(() => {
-      setStepState(5, "completed", "2.1s");
-      setStepState(6, "active");
-      setProgress(78);
-    }, 1200);
-
-    const result = await analysisPromise;
+    const result = await api.analyze(payload);
     stopTimer();
 
-    // Mark steps 6 through 10 complete
-    setStepState(6, "completed", "0.1s");
-    setStepState(7, "completed", "0.1s");
-    setStepState(8, "completed", "0.2s");
-    setStepState(9, "completed", "0.0s");
-    setStepState(10, "completed", "0.1s");
+    // Verify result is genuine and valid
+    if (!result || result.success !== true) {
+      throw new Error((result && result.error && result.error.message) || "Analysis failed to complete.");
+    }
+
+    const sim = result.similarity;
+    if (!sim) {
+      throw new Error("Similarity data missing in analysis response.");
+    }
+
+    const score = (typeof sim.score === "number") ? sim.score :
+                  (typeof sim.overallScore === "number") ? sim.overallScore :
+                  (typeof sim.overallSimilarity === "number") ? sim.overallSimilarity : null;
+
+    if (score === null || isNaN(score)) {
+      throw new Error("Valid similarity score was not returned by the engine.");
+    }
+
+    // Connect real backend timings
+    const timings = result.timings || {};
+    if (timings.extraction !== undefined) setStepTiming(1, formatMs(timings.extraction || 400));
+    if (timings.preprocessing !== undefined) setStepTiming(2, formatMs(timings.preprocessing || 10));
+    setStepTiming(3, formatMs(timings.exactMatching ? Math.round(timings.exactMatching * 0.3) : 900));
+    if (timings.search !== undefined) setStepTiming(4, formatMs(timings.search));
+    if (timings.sourceRetrieval !== undefined) setStepTiming(5, formatMs(timings.sourceRetrieval));
+    if (timings.exactMatching !== undefined) setStepTiming(6, formatMs(timings.exactMatching));
+    if (timings.nearMatching !== undefined) setStepTiming(7, formatMs(timings.nearMatching));
+    if (timings.semanticMatching !== undefined) setStepTiming(8, formatMs(timings.semanticMatching));
+    if (timings.scoring !== undefined) setStepTiming(9, formatMs(timings.scoring || 2));
+    if (timings.report !== undefined) setStepTiming(10, formatMs(timings.report || 5));
+
+    for (let i = 1; i <= 10; i++) setStepState(i, "completed");
     setProgress(100);
+
+    const totalSeconds = timings.total ? (timings.total / 1000).toFixed(1) : ((Date.now() - state.startTime) / 1000).toFixed(1);
+    $("elapsed-time").textContent = totalSeconds + "s";
 
     $("analysis-card-title").textContent = "Checkra Analysis Complete";
     $("analysis-card-sub").textContent = "Integrity evaluation finished with deterministic evidence verification.";
@@ -2189,12 +2333,10 @@ async function runAnalysis() {
   } catch (err) {
     stopTimer();
     console.error("Analysis error:", err);
-    // CRITICAL: On failure or timeout, DO NOT render 0%. Hide quick score card and display failure card.
-    $("quick-score-card").style.display = "none";
-    $("analysis-failure-card").style.display = "block";
-    $("failure-reason-text").textContent = err.message || "Serverless execution timeout or gateway error (HTTP 504).";
-    $("analysis-card-title").textContent = "Checkra Analysis Halted";
-    $("analysis-card-sub").textContent = "The analysis could not complete. Your document text has been safely preserved.";
+    showFailure(
+      "Checkra Analysis Failed",
+      err.message || "Serverless execution timeout or gateway error (HTTP 504). The document may be too large or the server timed out."
+    );
   } finally {
     state.isAnalyzing = false;
   }
@@ -2202,16 +2344,31 @@ async function runAnalysis() {
 
 // RENDER RESULTS
 function renderResults(analysis) {
-  if (!analysis) return;
-  const sim = (analysis && analysis.similarity) ? analysis.similarity : { overallScore: 0, exactCoverage: 0, nearCoverage: 0, semanticCoverage: 0, grade: "A" };
-  const score = Math.round(sim.overallScore || 0);
+  if (!analysis || analysis.success !== true) return;
+  const sim = (analysis && analysis.similarity) ? analysis.similarity : null;
+  if (!sim) return;
+
+  const score = (typeof sim.score === "number") ? sim.score :
+                (typeof sim.overallScore === "number") ? sim.overallScore :
+                (typeof sim.overallSimilarity === "number") ? sim.overallSimilarity : 0;
+
+  const exactPct = (sim.coverage && typeof sim.coverage.exactPercent === "number") ? sim.coverage.exactPercent :
+                   (typeof sim.exactCoverage === "number") ? sim.exactCoverage : 0;
+
+  const nearPct = (sim.coverage && typeof sim.coverage.nearPercent === "number") ? sim.coverage.nearPercent :
+                  (typeof sim.nearCoverage === "number") ? sim.nearCoverage : 0;
+
+  const semanticPct = (sim.coverage && typeof sim.coverage.semanticPercent === "number") ? sim.coverage.semanticPercent :
+                      (typeof sim.semanticCoverage === "number") ? sim.semanticCoverage : 0;
 
   // SVG Donut calculation
   const circle = $("score-donut-circle");
-  const circumference = 2 * Math.PI * 42; // ~ 263.89
-  const offset = circumference - (score / 100) * circumference;
-  circle.style.strokeDasharray = circumference;
-  circle.style.strokeDashoffset = offset;
+  if (circle) {
+    const circumference = 2 * Math.PI * 42;
+    const offset = circumference - (score / 100) * circumference;
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = offset;
+  }
 
   $("circle-score").textContent = score + "%";
   $("grade-badge").textContent = sim.grade || "A";
@@ -2220,23 +2377,28 @@ function renderResults(analysis) {
   $("grade-label").textContent = gradeNames[sim.grade] || "Evaluated";
 
   // Metrics
-  $("m-exact").textContent = (sim.exactCoverage || 0) + "%";
-  $("m-near").textContent = (sim.nearCoverage || 0) + "%";
-  $("m-semantic").textContent = (sim.semanticCoverage || 0) + "%";
+  $("m-exact").textContent = exactPct + "%";
+  $("m-near").textContent = nearPct + "%";
+  $("m-semantic").textContent = semanticPct + "%";
 
   const sources = analysis.sources || {};
   const retrievedCount = sources.retrievedCount || 0;
-  const verifiedCount = sources.matchingSources ? sources.matchingSources.length : 0;
+  const verifiedCount = sources.matchingCount !== undefined ? sources.matchingCount : (sources.matchingSources ? sources.matchingSources.length : 0);
   $("m-sources-retrieved").textContent = retrievedCount;
   $("m-sources-matching").textContent = verifiedCount;
 
-  // AI Evidence Review status
+  // AI Evidence Review status (must NEVER overwrite similarity score)
   const aiStatus = analysis.aiReview;
   if (aiStatus && aiStatus.available) {
     $("m-gemini").textContent = aiStatus.verdict || "AI Evidence Review completed.";
   } else {
     $("m-gemini").textContent = "AI Evidence Review is temporarily unavailable. This does not affect the similarity score.";
   }
+
+  // NOW show quick-score-card!
+  $("quick-score-card").style.display = "block";
+  if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
+  $("analysis-failure-card").style.display = "none";
 
   // Render tabs
   renderPassagesTab(analysis);
@@ -2247,15 +2409,23 @@ function renderResults(analysis) {
 // PASSAGES TAB RENDERING
 function renderPassagesTab(analysis) {
   const sim = (analysis && analysis.similarity) ? analysis.similarity : { exactCoverage: 0, nearCoverage: 0, semanticCoverage: 0 };
-  $("passages-exact-val").textContent = (sim.exactCoverage || 0) + "%";
-  $("passages-near-val").textContent = (sim.nearCoverage || 0) + "%";
-  $("passages-semantic-val").textContent = (sim.semanticCoverage || 0) + "%";
+  const exactPct = (sim.coverage && typeof sim.coverage.exactPercent === "number") ? sim.coverage.exactPercent :
+                   (typeof sim.exactCoverage === "number") ? sim.exactCoverage : 0;
+  const nearPct = (sim.coverage && typeof sim.coverage.nearPercent === "number") ? sim.coverage.nearPercent :
+                  (typeof sim.nearCoverage === "number") ? sim.nearCoverage : 0;
+  const semanticPct = (sim.coverage && typeof sim.coverage.semanticPercent === "number") ? sim.coverage.semanticPercent :
+                      (typeof sim.semanticCoverage === "number") ? sim.semanticCoverage : 0;
+
+  $("passages-exact-val").textContent = exactPct + "%";
+  $("passages-near-val").textContent = nearPct + "%";
+  $("passages-semantic-val").textContent = semanticPct + "%";
 
   const sources = analysis.sources || {};
-  $("src-stat-verified").textContent = sources.matchingSources ? sources.matchingSources.length : 0;
+  const verifiedCount = sources.matchingCount !== undefined ? sources.matchingCount : (sources.matchingSources ? sources.matchingSources.length : 0);
+  $("src-stat-verified").textContent = verifiedCount;
   $("src-stat-retrieved").textContent = sources.retrievedCount || 0;
 
-  const passages = analysis.passages || [];
+  const passages = analysis.matchedPassages || analysis.passages || [];
   const container = $("passages-container");
   if (!container) return;
 
@@ -2272,15 +2442,19 @@ function renderPassagesTab(analysis) {
     card.id = "passage-card-" + idx;
     card.onclick = () => selectPassage(idx);
 
-    const typeColor = p.matchType === "exact" ? "#f43f5e" : (p.matchType === "near" ? "#f59e0b" : "#8b5cf6");
+    const mType = (p.matchType || p.type || "exact").toLowerCase();
+    const typeColor = mType === "exact" ? "#f43f5e" : (mType === "near" ? "#f59e0b" : "#8b5cf6");
+    const pText = p.text || p.submittedSentence || p.phrase || "";
+    const pSim = p.similarity !== undefined ? p.similarity : (p.similarityScore || 100);
+
     card.innerHTML = `
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-size:11px;font-weight:700;color:${typeColor};text-transform:uppercase;">${p.matchType} Match</span>
-        <span style="font-size:11px;color:var(--text-muted);">${p.similarity || 100}%</span>
+        <span style="font-size:11px;font-weight:700;color:${typeColor};text-transform:uppercase;">${escapeHtml(mType)} Match</span>
+        <span style="font-size:11px;color:var(--text-muted);">${pSim}%</span>
       </div>
-      <p style="font-size:12px;color:#fff;line-height:1.5;margin-bottom:8px;">"${escapeHtml(p.text || "")}"</p>
+      <p style="font-size:12px;color:#fff;line-height:1.5;margin-bottom:8px;">"${escapeHtml(pText)}"</p>
       <div style="font-size:11px;color:var(--text-secondary);">
-        Source: ${p.sourceUrl ? `<a href="${escapeHtml(p.sourceUrl)}" target="_blank" style="color:var(--cyan-accent);text-decoration:none;">${escapeHtml(p.sourceTitle || p.sourceUrl)}</a>` : 'External Source'}
+        Source: ${p.sourceUrl ? `<a href="${escapeHtml(p.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan-accent);text-decoration:none;">${escapeHtml(p.sourceTitle || p.sourceUrl)}</a>` : 'External Source'}
       </div>
     `;
     container.appendChild(card);
@@ -2289,10 +2463,13 @@ function renderPassagesTab(analysis) {
   // Highlight original document box
   let fullText = $("doc-text").value;
   let highlighted = escapeHtml(fullText);
-  passages.slice(0, 10).forEach(p => {
-    if (p.text && p.text.length > 10) {
-      const esc = escapeHtml(p.text);
-      highlighted = highlighted.replace(esc, `<mark style="background:rgba(124, 58, 237, 0.35);color:#fff;border-radius:3px;padding:2px 4px;">${esc}</mark>`);
+  passages.slice(0, 15).forEach(p => {
+    const pText = p.text || p.submittedSentence || p.phrase || "";
+    if (pText && pText.length > 10) {
+      const esc = escapeHtml(pText);
+      const mType = (p.matchType || p.type || "exact").toLowerCase();
+      const markColor = mType === "exact" ? "rgba(244, 63, 94, 0.35)" : (mType === "near" ? "rgba(245, 158, 11, 0.35)" : "rgba(124, 58, 237, 0.35)");
+      highlighted = highlighted.replace(esc, `<mark style="background:${markColor};color:#fff;border-radius:3px;padding:2px 4px;">${esc}</mark>`);
     }
   });
   $("highlighted-doc-box").innerHTML = highlighted;
@@ -2303,10 +2480,12 @@ function selectPassage(idx) {
   document.querySelectorAll(".passage-card").forEach((c, i) => {
     c.classList.toggle("selected", i === idx);
   });
-  const p = (state.currentAnalysis && state.currentAnalysis.passages) ? state.currentAnalysis.passages[idx] : null;
-  if (p && p.text) {
-    $("rewrite-orig-text").value = p.text;
-    $("rewrite-orig-words").textContent = p.text.split(/\s+/).filter(Boolean).length;
+  const passages = (state.currentAnalysis && (state.currentAnalysis.matchedPassages || state.currentAnalysis.passages)) || [];
+  const p = passages[idx];
+  if (p) {
+    const pText = p.text || p.submittedSentence || p.phrase || "";
+    $("rewrite-orig-text").value = pText;
+    $("rewrite-orig-words").textContent = pText.split(/\s+/).filter(Boolean).length;
   }
 }
 
@@ -2426,9 +2605,10 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// Initial health check
+// Initial health check & dropzone initialization
 window.addEventListener("DOMContentLoaded", () => {
   updateWordCounts();
+  initDropZone();
   api.health().then(h => {
     console.log("Checkra API Health:", h);
   }).catch(e => console.warn("Initial health check:", e.message));

@@ -110,6 +110,8 @@ app.post("/api/extract", upload.single("file"), async (req, res) => {
 
     res.json({
       success: true,
+      text: extracted.rawText,
+      rawText: extracted.rawText,
       ...extracted
     });
   } catch (err) {
