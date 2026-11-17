@@ -48,3 +48,7 @@ module.exports = (req, res) => {
     }
   }
 };
+
+module.exports.config = {
+  maxDuration: 60
+};

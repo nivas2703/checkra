@@ -40,7 +40,7 @@ function getLocalReferenceSources() {
 /**
  * Extracts representative search queries from submitted sentences
  */
-function generateSearchQueries(sentences = [], maxQueries = 8) {
+function generateSearchQueries(sentences = [], maxQueries = 4) {
   const filtered = sentences
     .map(s => (typeof s === "string" ? s : s.raw || ""))
     .map(s => s.trim().replace(/["']/g, ""))
@@ -94,7 +94,7 @@ async function searchWebWithSearXNG(query, apiUrl = "http://localhost:8080/searc
       Accept: "application/json",
       "User-Agent": "Checkra-AI-Web-Checker/2.5.0"
     },
-    signal: AbortSignal.timeout(12000)
+    signal: AbortSignal.timeout(2000)
   });
 
   if (!res.ok) {
@@ -134,7 +134,7 @@ async function searchWebWithWikipedia(query) {
       Accept: "application/json",
       "User-Agent": "Mozilla/5.0 (compatible; Checkra/2.5.0; +https://checkra.local/bot)"
     },
-    signal: AbortSignal.timeout(8000)
+    signal: AbortSignal.timeout(2000)
   });
 
   if (!res.ok) {
@@ -172,7 +172,7 @@ async function queryExternalSearchApi(query, apiUrl, apiKey, engine = "") {
     headers["X-API-KEY"] = apiKey;
   }
 
-  const res = await fetch(urlObj.toString(), { headers, signal: AbortSignal.timeout(12000) });
+  const res = await fetch(urlObj.toString(), { headers, signal: AbortSignal.timeout(2000) });
   if (!res.ok) {
     throw new Error(`Search provider returned HTTP ${res.status}`);
   }
@@ -190,6 +190,53 @@ async function queryExternalSearchApi(query, apiUrl, apiKey, engine = "") {
 }
 
 /**
+ * Executes a list of search queries concurrently bounded by a strict time budget
+ */
+async function executeQueriesWithBudget(queries, searchFn, maxSources, budgetMs = 2500) {
+  const candidates = [];
+  const seenUrls = new Set();
+  const perQueryLimit = Math.max(3, Math.ceil(maxSources / Math.max(1, queries.length)));
+
+  const searchPromises = queries.map(async (q) => {
+    try {
+      return (await searchFn(q)) || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  let timedOut = false;
+  const timeoutPromise = new Promise((resolve) => setTimeout(() => {
+    timedOut = true;
+    resolve(null);
+  }, budgetMs));
+
+  const raceResult = await Promise.race([
+    Promise.allSettled(searchPromises),
+    timeoutPromise
+  ]);
+
+  if (Array.isArray(raceResult)) {
+    for (const res of raceResult) {
+      if (res.status === "fulfilled" && Array.isArray(res.value)) {
+        let added = 0;
+        for (const it of res.value) {
+          if (!seenUrls.has(it.url)) {
+            seenUrls.add(it.url);
+            candidates.push(it);
+            added++;
+          }
+          if (added >= perQueryLimit || candidates.length >= maxSources) break;
+        }
+      }
+      if (candidates.length >= maxSources) break;
+    }
+  }
+
+  return { candidates, timedOut };
+}
+
+/**
  * Unified Candidate Source Discovery
  * Provider Priority:
  * 1. Gemini Web Grounding
@@ -201,8 +248,8 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
   const searchApiUrl = options.searchApiUrl || process.env.SEARCH_API_URL;
   const searchApiKey = options.searchApiKey || process.env.SEARCH_API_KEY;
   const searchEngine = options.searchEngine || process.env.SEARCH_ENGINE || "";
-  const maxQueries = options.maxSearchQueries || Number(process.env.MAX_SEARCH_QUERIES || 8);
-  const maxSources = options.maxSources || Number(process.env.MAX_SOURCES || 20);
+  const maxQueries = options.maxSearchQueries || Number(process.env.MAX_SEARCH_QUERIES || 4);
+  const maxSources = options.maxSources || Number(process.env.MAX_SOURCES || 8);
 
   const queries = generateSearchQueries(sentences, maxQueries);
 
@@ -211,31 +258,38 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
 
   // 1. Try Gemini Search Grounding if configured
   if (isGeminiConfigured() && (options.useGeminiGrounding !== false)) {
-    const groundingResult = await searchWebWithGeminiGrounding(documentText, queries);
-    if (groundingResult.supported && groundingResult.grounded && groundingResult.sources.length > 0) {
-      logger.logEvent("search_grounding_success", { count: groundingResult.sources.length });
-      return {
-        mode: "GEMINI_GROUNDING",
-        modeLabel: "Gemini Web Grounding",
-        message: "Web sources discovered via official Gemini Google Search grounding.",
-        groundingStatus: "AVAILABLE",
-        queries: groundingResult.queries || queries,
-        sources: groundingResult.sources.slice(0, maxSources)
-      };
-    } else {
-      const errText = groundingResult.error || "";
-      if (errText.includes("429") || errText.includes("RESOURCE_EXHAUSTED")) {
-        geminiGroundingStatus = "QUOTA_EXHAUSTED";
-        geminiGroundingError = "Gemini Web Grounding unavailable: API quota exhausted.";
-      } else {
-        geminiGroundingStatus = "UNAVAILABLE";
-        geminiGroundingError = groundingResult.error || "Gemini web grounding returned no candidate sources.";
+    try {
+      const groundingResult = await Promise.race([
+        searchWebWithGeminiGrounding(documentText, queries),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Grounding timeout")), 2500))
+      ]);
+      if (groundingResult && groundingResult.supported && groundingResult.grounded && groundingResult.sources.length > 0) {
+        logger.logEvent("search_grounding_success", { count: groundingResult.sources.length });
+        return {
+          mode: "GEMINI_GROUNDING",
+          modeLabel: "Gemini Web Grounding",
+          message: "Web sources discovered via official Gemini Google Search grounding.",
+          groundingStatus: "AVAILABLE",
+          queries: groundingResult.queries || queries,
+          sources: groundingResult.sources.slice(0, maxSources)
+        };
+      } else if (groundingResult) {
+        const errText = groundingResult.error || "";
+        if (errText.includes("429") || errText.includes("RESOURCE_EXHAUSTED")) {
+          geminiGroundingStatus = "QUOTA_EXHAUSTED";
+          geminiGroundingError = "Gemini Web Grounding unavailable: API quota exhausted.";
+        } else {
+          geminiGroundingStatus = "UNAVAILABLE";
+          geminiGroundingError = groundingResult.error || "Gemini web grounding returned no candidate sources.";
+        }
       }
+    } catch (gErr) {
+      geminiGroundingStatus = "TIMEOUT";
+      geminiGroundingError = "Gemini Web Grounding timed out.";
     }
   }
 
-  const candidates = [];
-  const seenUrls = new Set();
+  let candidates = [];
   let searchFailed = false;
 
   // 2. Try SearXNG / External Search if configured
@@ -245,7 +299,7 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
 
     let canAttemptExternal = true;
     if (isLocalhost) {
-      const reachable = await isLocalhostReachable(searchApiUrl, 400);
+      const reachable = await isLocalhostReachable(searchApiUrl, 300);
       if (!reachable) {
         canAttemptExternal = false;
         searchFailed = true;
@@ -256,29 +310,14 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
     if (canAttemptExternal) {
       logger.logEvent("search_external_started", { queryCount: queries.length, engine: isSearXNG ? "SearXNG" : searchEngine });
 
-      const perQueryLimit = Math.max(4, Math.ceil(maxSources / Math.max(1, queries.length)));
-      for (const q of queries) {
-        try {
-          let items = [];
-          if (isSearXNG) {
-            items = await searchWebWithSearXNG(q, searchApiUrl);
-          } else {
-            items = await queryExternalSearchApi(q, searchApiUrl, searchApiKey, searchEngine);
-          }
-          let queryAdded = 0;
-          for (const it of items) {
-            if (!seenUrls.has(it.url)) {
-              seenUrls.add(it.url);
-              candidates.push(it);
-              queryAdded++;
-            }
-            if (queryAdded >= perQueryLimit || candidates.length >= maxSources) break;
-          }
-        } catch (err) {
-          searchFailed = true;
-          logger.warn("External search query failed", { query: q, error: err.message });
-        }
-        if (candidates.length >= maxSources) break;
+      const searchFn = (q) => isSearXNG
+        ? searchWebWithSearXNG(q, searchApiUrl)
+        : queryExternalSearchApi(q, searchApiUrl, searchApiKey, searchEngine);
+
+      const batchResult = await executeQueriesWithBudget(queries, searchFn, maxSources, 2500);
+      candidates = batchResult.candidates;
+      if (batchResult.timedOut && candidates.length === 0) {
+        searchFailed = true;
       }
 
       if (candidates.length > 0) {
@@ -306,24 +345,8 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
   if (candidates.length === 0 && !isExplicitExternalSearchFailure && (options.disablePublicWebSearch !== true)) {
     try {
       logger.logEvent("public_web_search_started", { queryCount: queries.length, engine: "Wikipedia" });
-      const perQueryLimit = Math.max(4, Math.ceil(maxSources / Math.max(1, queries.length)));
-      for (const q of queries) {
-        try {
-          const wikiItems = await searchWebWithWikipedia(q);
-          let queryAdded = 0;
-          for (const it of wikiItems) {
-            if (!seenUrls.has(it.url)) {
-              seenUrls.add(it.url);
-              candidates.push(it);
-              queryAdded++;
-            }
-            if (queryAdded >= perQueryLimit || candidates.length >= maxSources) break;
-          }
-        } catch (e) {
-          // continue with remaining queries
-        }
-        if (candidates.length >= maxSources) break;
-      }
+      const batchResult = await executeQueriesWithBudget(queries, searchWebWithWikipedia, maxSources, 2500);
+      candidates = batchResult.candidates;
 
       if (candidates.length > 0) {
         let statusMsg = `Retrieved ${candidates.length} candidate source URLs via public web search.`;

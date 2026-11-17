@@ -99,11 +99,14 @@ app.post("/api/extract", upload.single("file"), async (req, res) => {
       });
     }
 
+    const t0 = Date.now();
     const extracted = await extractFromFile(
       req.file.buffer,
       req.file.originalname,
       req.file.mimetype
     );
+    const tExtraction = Date.now() - t0;
+    console.log(`[Checkra] extraction: ${tExtraction} ms`);
 
     res.json({
       success: true,

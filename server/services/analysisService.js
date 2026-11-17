@@ -35,6 +35,18 @@ async function executeAnalysis({
   options = {},
   onProgress = () => {}
 }) {
+  const tTotalStart = Date.now();
+  let tExtraction = 0;
+  let tPreprocess = 0;
+  let tSearch = 0;
+  let tSourceRetrieval = 0;
+  let tExact = 0;
+  let tNear = 0;
+  let tSemantic = 0;
+  let tScoring = 0;
+  let tGemini = 0;
+  let tReport = 0;
+
   const analysisId = db.generateAnalysisId();
   logger.logEvent("analysis_started", { analysisId, title, wordCount: fileStats.wordCount });
 
@@ -55,6 +67,7 @@ async function executeAnalysis({
 
   onProgress({ step: 2, label: "Step 2 — Normalizing and splitting into passages", percent: 20 });
   let processed;
+  const tP0 = Date.now();
   try {
     processed = preprocessDocument(rawDocument, options);
     stageStatuses.documentProcessing = "success";
@@ -62,6 +75,7 @@ async function executeAnalysis({
     logger.error("Document preprocessing failed", { error: err.message });
     throw new Error(`Document preprocessing failed: ${err.message}`);
   }
+  tPreprocess = Date.now() - tP0;
 
   // STAGE 2 & 3 — Web Search & Candidate Discovery
   onProgress({ step: 3, label: "Step 3 — Generating distinctive search queries", percent: 30 });
@@ -75,6 +89,7 @@ async function executeAnalysis({
     sources: []
   };
 
+  const tS0 = Date.now();
   try {
     discovery = await discoverCandidateSources(rawDocument, processed.eligibleSentences, options);
     stageStatuses.webSearch = discovery.mode === "LOCAL_COMPARISON" ? "local_fallback" : "success";
@@ -83,10 +98,12 @@ async function executeAnalysis({
     stageStatuses.webSearch = "failed";
     discovery.message = `Web search encountered an error: ${err.message}. Running local comparison.`;
   }
+  tSearch = Date.now() - tS0;
 
   // STAGE 4 — Safe Source Retrieval
   onProgress({ step: 5, label: "Step 5 — Retrieving candidate sources safely", percent: 50 });
   let retrievedSources = [];
+  const tR0 = Date.now();
   try {
     const localRefSources = getLocalReferenceSources().map(s => ({ ...s, status: "VERIFIED" }));
 
@@ -94,7 +111,7 @@ async function executeAnalysis({
       retrievedSources = discovery.sources.map(s => ({ ...s, status: "VERIFIED" }));
       stageStatuses.sourceRetrieval = "local";
     } else if (discovery.sources.length > 0) {
-      retrievedSources = await retrieveMultipleSources(discovery.sources, 4);
+      retrievedSources = await retrieveMultipleSources(discovery.sources, 3, 3000);
       stageStatuses.sourceRetrieval = "success";
       if (localRefSources.length > 0) {
         retrievedSources.push(...localRefSources);
@@ -135,6 +152,7 @@ async function executeAnalysis({
     logger.warn("Source retrieval batch error", { error: err.message });
     stageStatuses.sourceRetrieval = "failed";
   }
+  tSourceRetrieval = Date.now() - tR0;
 
   // Track unverifiable sources (e.g. 403, 404, 500, timeouts)
   const unverifiableSources = [];
@@ -154,6 +172,7 @@ async function executeAnalysis({
   const sourceEvidences = [];
   const allMatchedPassages = [];
 
+  const tE0 = Date.now();
   for (const src of retrievedSources) {
     if (!src.text || src.status !== "VERIFIED") {
       continue;
@@ -170,6 +189,7 @@ async function executeAnalysis({
     }
 
     // Level 2: Near matches
+    const tN0 = Date.now();
     let nearResult = [];
     try {
       const srcSentences = (src.text.match(/[^.!?\r\n]+[.!?]?/g) || [])
@@ -179,6 +199,7 @@ async function executeAnalysis({
     } catch (e) {
       logger.warn("Near match error", { url: src.url, error: e.message });
     }
+    tNear += (Date.now() - tN0);
 
     const exactWeight = exactResult.exactOverlapPercent || 0;
     const avgNearScore = nearResult.length > 0
@@ -237,13 +258,18 @@ async function executeAnalysis({
       });
     }
   }
+  tExact = (Date.now() - tE0) - tNear;
 
   // Level 3: Semantic comparison with sentence transformers & multi-signal evidence classification
   onProgress({ step: 7, label: "Step 7 — Evaluating semantic sentence similarity", percent: 75 });
   const topicalSources = [];
   const possibleSources = [];
 
-  for (const src of retrievedSources) {
+  const tSem0 = Date.now();
+  // Bound semantic comparison to top verified sources for serverless performance
+  const semanticTargetSources = retrievedSources.filter(s => s.text && s.status === "VERIFIED").slice(0, 4);
+
+  for (const src of semanticTargetSources) {
     if (src.text && src.status === "VERIFIED") {
       try {
         const srcSentences = (src.text.match(/[^.!?\r\n]+[.!?]?/g) || [])
@@ -369,6 +395,7 @@ async function executeAnalysis({
       }
     }
   }
+  tSemantic = Date.now() - tSem0;
 
   // Populate topical sources for retrieved candidate pages that do not have derivation matches
   for (const src of retrievedSources) {
@@ -402,7 +429,10 @@ async function executeAnalysis({
     (s.semanticMatches?.length || 0) > 0
   );
 
+  const tScore0 = Date.now();
   const scoreResult = calculateDocumentScore(processed.tokens, verifiedMatchingSources, processed.eligibleSentences);
+  tScoring = Date.now() - tScore0;
+
   verifiedMatchingSources.sort((a, b) => b.similarity - a.similarity);
 
   const highRiskCount = allMatchedPassages.filter(p => p.type === "EXACT" || (p.similarityScore || 0) >= 80).length;
@@ -425,7 +455,7 @@ async function executeAnalysis({
   }
 
   // STAGE 7 — Optional Gemini AI Evidence Review
-  // Decoupled from core scoring, bounded by strict 3500ms timeout so Vercel execution never exceeds time limit.
+  // Decoupled from core scoring, bounded by strict timeout so Vercel execution never exceeds time limit.
   onProgress({ step: 10, label: "Step 10 — Gemini AI reviewing evidence (optional)", percent: 95 });
   let aiReview = {
     status: "NOT_CONFIGURED",
@@ -436,13 +466,27 @@ async function executeAnalysis({
     items: []
   };
 
+  const tG0 = Date.now();
+  const elapsedBeforeAi = Date.now() - tTotalStart;
   const passagesForAiReview = allMatchedPassages.filter(p => p.type === "EXACT" || p.type === "NEAR" || p.type === "SEMANTIC" || p.type === "POSSIBLE");
+
   try {
-    if (passagesForAiReview.length > 0) {
-      // Bound AI review by strict timeout to guarantee fast serverless completion
+    if (elapsedBeforeAi > 6500) {
+      // Bounded pipeline budget reached: preserve core analysis and skip external AI call
+      aiReview = {
+        status: "UNAVAILABLE",
+        state: "AI_REVIEW_UNAVAILABLE",
+        available: false,
+        retryable: true,
+        message: "AI evidence review deferred to conserve serverless budget. Core similarity score is complete.",
+        items: []
+      };
+      stageStatuses.geminiReview = "limited";
+    } else if (passagesForAiReview.length > 0) {
+      // Bound AI review by strict 2000ms timeout
       aiReview = await Promise.race([
-        reviewEvidenceWithAI(passagesForAiReview.slice(0, 8), { timeoutMs: 3500, maxAttempts: 1 }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("AI review timeout")), 3800))
+        reviewEvidenceWithAI(passagesForAiReview.slice(0, 8), { timeoutMs: 2000, maxAttempts: 1 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("AI review timeout")), 2200))
       ]);
       stageStatuses.geminiReview = (aiReview.status === "SUCCESS" || aiReview.status === "completed") ? "success" : "limited";
     } else {
@@ -468,7 +512,9 @@ async function executeAnalysis({
     };
     stageStatuses.geminiReview = "limited";
   }
+  tGemini = Date.now() - tG0;
 
+  const tRep0 = Date.now();
   const matchingSourcesCount = verifiedMatchingSources.length;
 
   const analysisRecord = {
@@ -529,6 +575,22 @@ async function executeAnalysis({
   onProgress({ step: 10, label: "Step 10 — Report ready", percent: 100 });
 
   db.setSessionAnalysis(analysisRecord);
+
+  tReport = Date.now() - tRep0;
+  const tTotal = Date.now() - tTotalStart;
+
+  // Lightweight server-side stage timing instrumentation (Step 9)
+  console.log(`[Checkra] extraction: ${tExtraction} ms`);
+  console.log(`[Checkra] preprocessing: ${tPreprocess} ms`);
+  console.log(`[Checkra] exact matching: ${tExact} ms`);
+  console.log(`[Checkra] near matching: ${tNear} ms`);
+  console.log(`[Checkra] semantic matching: ${tSemantic} ms`);
+  console.log(`[Checkra] core scoring: ${tScoring} ms`);
+  console.log(`[Checkra] search: ${tSearch} ms`);
+  console.log(`[Checkra] source verification: ${tSourceRetrieval} ms`);
+  console.log(`[Checkra] Gemini review: ${tGemini} ms`);
+  console.log(`[Checkra] report generation: ${tReport} ms`);
+  console.log(`[Checkra] total: ${tTotal} ms`);
 
   logger.logEvent("analysis_completed", {
     analysisId,

@@ -13,7 +13,8 @@
     "test:e2e": "node test/e2e_full_validation.js",
     "test:vercel": "node test/vercel_compatibility_test.js",
     "test:stabilization": "node test/production_stabilization_test.js",
-    "test:large-doc": "node test/large_doc_audit.js"
+    "test:large-doc": "node test/large_doc_audit.js",
+    "test:timeout": "node test/timeout_resilience_test.js"
   },
   "engines": {
     "node": ">=18.0.0"

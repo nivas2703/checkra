@@ -10,7 +10,7 @@
 const { isSafeUrl, sanitizeHtml } = require("../utils/security");
 const logger = require("../utils/logger");
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 2000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -26,7 +26,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
   }
 }
 
-async function retrievePage(url) {
+async function retrievePage(url, timeoutMs = 2000) {
   if (!isSafeUrl(url)) {
     return {
       status: "SOURCE_NOT_VERIFIABLE",
@@ -46,7 +46,7 @@ async function retrievePage(url) {
           "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8"
         }
       },
-      8000
+      timeoutMs
     );
 
     if (!res.ok) {
@@ -98,16 +98,20 @@ async function retrievePage(url) {
 }
 
 /**
- * Concurrently retrieves an array of candidate sources with concurrency limit
+ * Concurrently retrieves candidate sources with bounded concurrency and strict overall time budget
  */
-async function retrieveMultipleSources(candidates = [], maxConcurrent = 5) {
+async function retrieveMultipleSources(candidates = [], maxConcurrent = 3, overallBudgetMs = 3000) {
+  const targetCandidates = (candidates || []).slice(0, 5);
   const results = [];
-  const queue = [...candidates];
+  const queue = [...targetCandidates];
+
+  let budgetExpired = false;
 
   async function worker() {
-    while (queue.length > 0) {
+    while (queue.length > 0 && !budgetExpired) {
       const item = queue.shift();
-      const res = await retrievePage(item.url);
+      if (!item) break;
+      const res = await retrievePage(item.url, 2000);
       results.push({
         ...item,
         status: res.status,
@@ -119,11 +123,35 @@ async function retrieveMultipleSources(candidates = [], maxConcurrent = 5) {
   }
 
   const workers = [];
-  const workerCount = Math.min(maxConcurrent, candidates.length);
+  const workerCount = Math.min(maxConcurrent, targetCandidates.length);
   for (let i = 0; i < workerCount; i++) {
     workers.push(worker());
   }
-  await Promise.all(workers);
+
+  const timeoutPromise = new Promise((resolve) => setTimeout(() => {
+    budgetExpired = true;
+    resolve("TIMEOUT");
+  }, overallBudgetMs));
+
+  await Promise.race([
+    Promise.all(workers),
+    timeoutPromise
+  ]);
+
+  // For any remaining items in queue that were not processed before budget expired
+  while (queue.length > 0) {
+    const remaining = queue.shift();
+    if (remaining) {
+      results.push({
+        ...remaining,
+        status: "SOURCE_NOT_VERIFIABLE",
+        reason: "Retrieval timed out",
+        text: "",
+        retrievedAt: new Date().toISOString()
+      });
+    }
+  }
+
   return results;
 }
 

@@ -1357,6 +1357,21 @@ header {
                   <button class="btn sm" onclick="switchTab('reports')">View Report</button>
                 </div>
               </div>
+
+              <!-- Analysis Failure Card (Dedicated failure view - prevents rendering misleading 0% metrics on timeouts/errors) -->
+              <div class="score-card" id="analysis-failure-card" style="display:none; margin-top:14px; border:1px solid rgba(244,63,94,0.4); background:rgba(244,63,94,0.06);">
+                <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:12px;">
+                  <span style="font-size:22px; line-height:1;">⚠️</span>
+                  <div>
+                    <h4 style="margin:0 0 4px 0; font-size:14px; font-weight:700; color:#f87171;">Analysis Could Not Be Completed</h4>
+                    <div style="font-size:12px; color:var(--text-secondary); line-height:1.4;" id="failure-reason-text">Serverless execution timeout or gateway error (HTTP 504).</div>
+                  </div>
+                </div>
+                <div class="checkra-alert" style="background:rgba(0,0,0,0.35); border-left:3px solid #f43f5e; font-size:11px; color:var(--text-muted); line-height:1.5; padding:8px 12px; margin-bottom:12px;">
+                  <strong style="color:#fecdd3;">Integrity Protection Notice:</strong> Checkra strictly avoids reporting 0% similarity when an analysis cannot be completed. The document's true integrity has not been calculated. Please retry, check your connection, or test with reference text.
+                </div>
+                <button class="btn sm" onclick="startAnalysis()" style="width:100%;">Retry Analysis ↺</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1872,6 +1887,7 @@ function clearWorkspace() {
   $("stat-filename").textContent = "No file selected";
   updateTextStats();
   $("quick-score-card").style.display = "none";
+  if ($("analysis-failure-card")) $("analysis-failure-card").style.display = "none";
   resetProgressSteps();
   state.currentAnalysis = null;
 }
@@ -1910,6 +1926,8 @@ async function startAnalysis() {
   $("analysis-badge").textContent = "Analyzing...";
   $("analysis-badge").style.background = "rgba(124,58,237,0.2)";
   $("analysis-badge").style.color = "#c4b5fd";
+  $("quick-score-card").style.display = "none";
+  if ($("analysis-failure-card")) $("analysis-failure-card").style.display = "none";
 
   animatePipelineSteps();
 
@@ -1924,8 +1942,13 @@ async function startAnalysis() {
     $("analysis-badge").textContent = "Analysis Failed";
     $("analysis-badge").style.background = "rgba(244,63,94,0.2)";
     $("analysis-badge").style.color = "#fecdd3";
-    $("quick-score-card").style.display = "block";
-    $("status-message-banner").innerHTML = `<span style="color:#f43f5e; font-weight:700;">Checkra Analysis Notice:</span> ${escapeHtml(err.message)}`;
+    // CRITICAL: NEVER display 0% similarity metrics card on execution failure
+    $("quick-score-card").style.display = "none";
+    if ($("analysis-failure-card")) {
+      $("analysis-failure-card").style.display = "block";
+      const reasonEl = $("failure-reason-text");
+      if (reasonEl) reasonEl.textContent = err.message || "Serverless execution timeout or gateway error (HTTP 504).";
+    }
     console.error("Checkra analysis error:", err);
   }
 }
@@ -1963,6 +1986,9 @@ function completeAllPipelineSteps() {
 
 // Render Results
 function renderAnalysisResults(analysis) {
+  if ($("analysis-failure-card")) $("analysis-failure-card").style.display = "none";
+  $("quick-score-card").style.display = "block";
+
   const sim = analysis.similarity || {};
   const score = sim.score ?? 0;
   const grade = sim.grade || "A";

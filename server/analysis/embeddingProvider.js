@@ -146,8 +146,8 @@ async function embedTexts(texts, options = {}) {
     }
   }
 
-  // 2. Transformers.js with Xenova/all-MiniLM-L6-v2 (quantized)
-  if (process.env.DISABLE_TRANSFORMERS !== "true") {
+  // 2. Transformers.js with Xenova/all-MiniLM-L6-v2 (quantized) — disabled on Vercel serverless to prevent HuggingFace cold-start download timeouts
+  if (process.env.DISABLE_TRANSFORMERS !== "true" && !process.env.VERCEL) {
     try {
       const extractor = await getTransformersPipeline();
       const embeddings = [];
