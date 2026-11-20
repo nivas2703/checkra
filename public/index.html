@@ -12,20 +12,20 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
 :root {
-  --bg-deep: #07070b;
-  --bg-canvas: #09090f;
-  --bg-sidebar: #0d0d15;
-  --bg-card: #12121d;
-  --bg-card-subtle: #171725;
-  --bg-card-hover: #1c1c2e;
-  --bg-glass: rgba(18, 18, 29, 0.75);
+  --bg-deep: #05060b;
+  --bg-canvas: #06070f;
+  --bg-sidebar: #090a14;
+  --bg-card: rgba(17, 19, 34, 0.68);
+  --bg-card-subtle: rgba(22, 24, 42, 0.72);
+  --bg-card-hover: rgba(28, 30, 52, 0.82);
+  --bg-glass: rgba(17, 19, 34, 0.68);
   
-  --violet-primary: #8b5cf6;
+  --violet-primary: #a855f7;
   --violet-deep: #7c3aed;
   --violet-dark: #6d28d9;
-  --violet-glow: rgba(139, 92, 246, 0.35);
-  --violet-glow-lg: 0 0 32px rgba(139, 92, 246, 0.45);
-  --violet-border: rgba(139, 92, 246, 0.28);
+  --violet-glow: rgba(168, 85, 247, 0.35);
+  --violet-glow-lg: 0 0 36px rgba(168, 85, 247, 0.45);
+  --violet-border: rgba(168, 85, 247, 0.22);
   
   --cyan-accent: #06b6d4;
   --cyan-glow: rgba(6, 182, 212, 0.3);
@@ -42,11 +42,11 @@
   --rose-bg: rgba(244, 63, 94, 0.12);
   --rose-border: rgba(244, 63, 94, 0.3);
   
-  --text-primary: #ffffff;
+  --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-subtle: rgba(168, 85, 247, 0.16);
+  --border-strong: rgba(168, 85, 247, 0.28);
   
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -63,8 +63,9 @@ body {
   font-family: var(--font-sans);
   background-color: var(--bg-canvas);
   background-image: 
-    radial-gradient(circle at 12% 18%, rgba(124, 58, 237, 0.14) 0%, transparent 45%),
-    radial-gradient(circle at 88% 82%, rgba(6, 182, 212, 0.09) 0%, transparent 45%);
+    radial-gradient(circle at 14% 16%, rgba(124, 58, 237, 0.18) 0%, transparent 48%),
+    radial-gradient(circle at 86% 80%, rgba(168, 85, 247, 0.12) 0%, transparent 52%),
+    radial-gradient(circle at 50% 50%, rgba(12, 13, 28, 0.5) 0%, transparent 100%);
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
@@ -81,7 +82,7 @@ body {
 /* TOP NAVBAR */
 .top-nav {
   height: 64px;
-  background: rgba(11, 11, 18, 0.88);
+  background: rgba(6, 7, 15, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
@@ -146,7 +147,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(18, 18, 29, 0.6);
+  background: rgba(17, 19, 34, 0.6);
   padding: 4px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-subtle);
@@ -170,9 +171,9 @@ body {
   background: rgba(255, 255, 255, 0.05);
 }
 .nav-tab-btn.active {
-  background: linear-gradient(135deg, var(--violet-deep), var(--violet-dark));
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
   color: #ffffff;
-  box-shadow: 0 0 14px rgba(124, 58, 237, 0.45);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.45);
 }
 
 .nav-actions {
@@ -199,9 +200,9 @@ body {
   border-color: var(--border-strong);
 }
 .btn-primary-action {
-  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
   color: #fff;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 8px 18px;
   border-radius: var(--radius-full);
   font-size: 13px;
@@ -210,12 +211,12 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
-  transition: all 0.2s;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.45);
+  transition: all 0.2s ease;
 }
 .btn-primary-action:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 0 22px rgba(139, 92, 246, 0.6);
+  background: linear-gradient(135deg, #6d28d9, #9333ea);
+  box-shadow: 0 0 26px rgba(168, 85, 247, 0.65);
   transform: translateY(-1px);
 }
 
@@ -753,20 +754,24 @@ input:checked + .slider:before {
 
 /* Hexagon Radar Visual */
 .radar-wrapper {
-  width: 110px;
-  height: 110px;
+  width: 116px;
+  height: 116px;
   margin: 0 auto 16px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  transition: all 0.4s ease;
 }
 .radar-ring {
   position: absolute;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 2px solid rgba(139, 92, 246, 0.2);
+  border: 2px solid rgba(168, 85, 247, 0.25);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.12);
+  transition: all 0.4s ease;
 }
 .radar-ring-pulse {
   position: absolute;
@@ -774,26 +779,45 @@ input:checked + .slider:before {
   height: 100%;
   border-radius: 50%;
   border: 2px solid transparent;
-  border-top-color: var(--violet-primary);
-  border-right-color: var(--cyan-accent);
-  animation: radar-spin 2.5s linear infinite;
-  box-shadow: 0 0 20px var(--violet-glow);
+  border-top-color: #a855f7;
+  border-right-color: #06b6d4;
+  opacity: 0.35;
+  transition: all 0.4s ease;
+}
+.radar-wrapper.active {
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.35) 0%, rgba(168, 85, 247, 0.15) 50%, transparent 72%);
+  box-shadow: 0 0 36px rgba(168, 85, 247, 0.45);
+}
+.radar-wrapper.active .radar-ring {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.4);
+}
+.radar-wrapper.active .radar-ring-pulse {
+  opacity: 1;
+  animation: radar-spin 1.8s linear infinite;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.55);
 }
 @keyframes radar-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 .radar-center-logo {
-  width: 58px;
-  height: 58px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #7c3aed, #4c1d95);
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.85), rgba(76, 29, 149, 0.95));
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   z-index: 2;
   box-shadow: 0 0 24px var(--violet-glow);
+  overflow: hidden;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+.radar-wrapper.active .radar-center-logo {
+  box-shadow: 0 0 32px rgba(168, 85, 247, 0.7);
+  border-color: rgba(192, 132, 252, 0.65);
 }
 
 .analysis-main-title {
@@ -810,7 +834,7 @@ input:checked + .slider:before {
 
 /* Progress Bar */
 .progress-container {
-  margin: 16px 0 20px;
+  margin: 16px 0 16px;
 }
 .progress-bar-bg {
   width: 100%;
@@ -837,6 +861,52 @@ input:checked + .slider:before {
   font-size: 12px;
   font-weight: 700;
   color: var(--violet-primary);
+}
+
+/* Horizontal 1-10 Micro-Stepper */
+.horizontal-stepper-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 20px;
+  padding: 8px 12px;
+  background: rgba(10, 11, 22, 0.6);
+  border: 1px solid rgba(168, 85, 247, 0.16);
+  border-radius: var(--radius-full);
+}
+.h-step-item {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+.h-step-line {
+  flex: 1;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 3px;
+  transition: background 0.3s ease;
+}
+.h-step-item.active {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border-color: #c084fc;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.75);
+  transform: scale(1.18);
+}
+.h-step-item.completed {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--emerald);
+  color: var(--emerald);
 }
 
 /* Vertical Timeline Stepper */
@@ -1127,24 +1197,28 @@ input:checked + .slider:before {
 
 /* ANALYSIS FAILURE CARD (Safeguard) */
 .analysis-failure-view {
-  background: linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(18, 18, 29, 0.95));
-  border: 1px solid var(--rose-border);
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.12), rgba(17, 19, 34, 0.92));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(244, 63, 94, 0.38);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 30px 22px;
   text-align: center;
+  box-shadow: 0 0 32px rgba(244, 63, 94, 0.18), inset 0 0 24px rgba(244, 63, 94, 0.06);
 }
 .failure-icon-wrap {
-  width: 50px;
-  height: 50px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  background: var(--rose-bg);
+  background: rgba(244, 63, 94, 0.15);
   border: 2px solid var(--rose);
   color: var(--rose);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  margin: 0 auto 12px;
+  font-size: 24px;
+  margin: 0 auto 14px;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.35);
 }
 .failure-title {
   font-size: 16px;
@@ -1155,18 +1229,18 @@ input:checked + .slider:before {
 .failure-desc {
   font-size: 12px;
   color: #fecdd3;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   line-height: 1.5;
 }
 .failure-notice-box {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(244, 63, 94, 0.2);
+  background: rgba(10, 11, 22, 0.6);
+  border: 1px solid rgba(244, 63, 94, 0.25);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 12px 14px;
   font-size: 11px;
   color: var(--text-secondary);
-  margin-bottom: 16px;
-  line-height: 1.4;
+  margin-bottom: 18px;
+  line-height: 1.5;
 }
 
 /* OTHER TABS (Passages, AI Rewrite, Grammar, Report, Diagnostics) */
@@ -1532,7 +1606,7 @@ input:checked + .slider:before {
               <div class="radar-ring"></div>
               <div class="radar-ring-pulse"></div>
               <div class="radar-center-logo">
-                <img src="/checkra-icon.png" alt="Checkra" style="width:38px;height:38px;object-fit:contain;">
+                <img src="/checkra-icon.png" alt="Checkra" style="width:38px;height:38px;object-fit:contain;" id="radar-center-img">
               </div>
             </div>
 
@@ -1548,6 +1622,29 @@ input:checked + .slider:before {
             <div class="progress-meta">
               <span id="progress-percent" class="progress-percent-val">0%</span>
             </div>
+          </div>
+
+          <!-- Sleek Horizontal 1-10 Step Progress Indicator -->
+          <div class="horizontal-stepper-bar" id="horizontal-stepper">
+            <div class="h-step-item" id="h-step-1" title="Reading & validating"><span class="h-step-dot">1</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-2" title="Extracting & normalizing"><span class="h-step-dot">2</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-3" title="Distinctive passages"><span class="h-step-dot">3</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-4" title="Searching sources"><span class="h-step-dot">4</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-5" title="Retrieving content"><span class="h-step-dot">5</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-6" title="Comparing exact"><span class="h-step-dot">6</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-7" title="Near & paraphrase"><span class="h-step-dot">7</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-8" title="Semantic vectors"><span class="h-step-dot">8</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-9" title="Deterministic score"><span class="h-step-dot">9</span></div>
+            <div class="h-step-line"></div>
+            <div class="h-step-item" id="h-step-10" title="Integrity report"><span class="h-step-dot">10</span></div>
           </div>
 
           <!-- Vertical Timeline Stepper -->
@@ -1604,16 +1701,25 @@ input:checked + .slider:before {
         <!-- COLUMN 3: RESULTS / INTEGRITY REPORT -->
         <div class="col-report">
           <!-- AWAITING ANALYSIS CARD (Default Initial State) -->
-          <div id="awaiting-analysis-card" class="glass-card" style="text-align: center; padding: 36px 20px;">
-            <div style="width: 54px; height: 54px; border-radius: 16px; background: rgba(139, 92, 246, 0.12); border: 1px solid var(--violet-border); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+          <div id="awaiting-analysis-card" class="glass-card" style="text-align: center; padding: 32px 22px;">
+            <div style="width: 58px; height: 58px; border-radius: 18px; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 0 20px rgba(168, 85, 247, 0.25);">
               <img src="/checkra-icon.png" alt="Checkra" style="width: 32px; height: 32px; object-fit: contain;">
             </div>
-            <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">Integrity Report Awaiting Analysis</h3>
-            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">Upload a document or paste text, then click "Check Document" to generate verifiable similarity, originality, and source evidence.</p>
-            <div style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 11px; color: var(--text-secondary); text-align: left; display: flex; flex-direction: column; gap: 6px;">
-              <div>🔒 <strong style="color:#fff;">Session-Only Mode</strong>: Documents are processed in memory and discarded when closed.</div>
-              <div>⚙️ <strong style="color:#fff;">Deterministic Scoring</strong>: Scores are factual percentages derived directly from confirmed textual matches.</div>
-              <div>✨ <strong style="color:#fff;">Decoupled AI Review</strong>: AI evidence review is optional and never modifies the deterministic similarity score.</div>
+            <h3 style="font-size: 16px; font-weight: 700; color: #f8fafc; margin-bottom: 6px; letter-spacing: -0.2px;">Integrity Report Awaiting Analysis</h3>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 22px;">Upload a document or paste text, then click "Check Document" to generate verifiable similarity, originality, and source evidence.</p>
+            <div style="padding: 14px 16px; background: rgba(10, 11, 22, 0.65); border: 1px solid rgba(168, 85, 247, 0.16); border-radius: 12px; font-size: 11px; color: var(--text-secondary); text-align: left; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:14px;padding:4px;border-radius:6px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);">🔒</span>
+                <div><strong style="color:#f8fafc;">Session-Only Mode</strong>: Processed strictly in memory; zero permanent disk persistence.</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:14px;padding:4px;border-radius:6px;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);">⚙️</span>
+                <div><strong style="color:#f8fafc;">Deterministic Scoring</strong>: Factual mathematical coverage from confirmed matches.</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:14px;padding:4px;border-radius:6px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.25);">✨</span>
+                <div><strong style="color:#f8fafc;">Decoupled AI Review</strong>: AI review is optional and never modifies factual similarity scores.</div>
+              </div>
             </div>
           </div>
 
@@ -1973,6 +2079,10 @@ function transitionTo(nextStatus, payload = {}) {
       $("quick-score-card").style.display = "none";
       $("analysis-failure-card").style.display = "none";
       if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "block";
+      const radarImgIdle = $("radar-center-img");
+      const radarWrapIdle = document.querySelector(".radar-wrapper");
+      if (radarImgIdle) radarImgIdle.src = "/checkra-icon.png";
+      if (radarWrapIdle) radarWrapIdle.classList.remove("active");
       resetAnalysisCard();
       break;
 
@@ -1981,6 +2091,10 @@ function transitionTo(nextStatus, payload = {}) {
       state.isAnalyzing = false;
       $("quick-score-card").style.display = "none";
       $("analysis-failure-card").style.display = "none";
+      const radarImgExt = $("radar-center-img");
+      const radarWrapExt = document.querySelector(".radar-wrapper");
+      if (radarImgExt) radarImgExt.src = "/checkra-loader.gif";
+      if (radarWrapExt) radarWrapExt.classList.add("active");
       setExtractionLoading(true, payload.fileName);
       setStepState(1, "active");
       break;
@@ -1991,6 +2105,10 @@ function transitionTo(nextStatus, payload = {}) {
       $("quick-score-card").style.display = "none";
       $("analysis-failure-card").style.display = "none";
       if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
+      const radarImgAnz = $("radar-center-img");
+      const radarWrapAnz = document.querySelector(".radar-wrapper");
+      if (radarImgAnz) radarImgAnz.src = "/checkra-loader.gif";
+      if (radarWrapAnz) radarWrapAnz.classList.add("active");
       $("analysis-card-title").textContent = "Checkra is Analyzing Your Document";
       $("analysis-card-sub").textContent = "Examining your writing for similarity, originality, and source evidence.";
       for (let i = 1; i <= 10; i++) {
@@ -2008,6 +2126,10 @@ function transitionTo(nextStatus, payload = {}) {
       state.isExtracting = false;
       state.isAnalyzing = false;
       stopTimer();
+      const radarImgDone = $("radar-center-img");
+      const radarWrapDone = document.querySelector(".radar-wrapper");
+      if (radarImgDone) radarImgDone.src = "/checkra-icon.png";
+      if (radarWrapDone) radarWrapDone.classList.remove("active");
       if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
       $("analysis-failure-card").style.display = "none";
       $("quick-score-card").style.display = "block";
@@ -2018,6 +2140,10 @@ function transitionTo(nextStatus, payload = {}) {
       state.isAnalyzing = false;
       stopTimer();
       setExtractionLoading(false);
+      const radarImgErr = $("radar-center-img");
+      const radarWrapErr = document.querySelector(".radar-wrapper");
+      if (radarImgErr) radarImgErr.src = "/checkra-icon.png";
+      if (radarWrapErr) radarWrapErr.classList.remove("active");
       // Hard Gate: NEVER show quick-score-card or 0%/Grade A on failure
       $("quick-score-card").style.display = "none";
       if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
@@ -2095,6 +2221,10 @@ function resetToAwaiting() {
 }
 
 function resetAnalysisCard() {
+  const radarImg = $("radar-center-img");
+  const radarWrap = document.querySelector(".radar-wrapper");
+  if (radarImg) radarImg.src = "/checkra-icon.png";
+  if (radarWrap) radarWrap.classList.remove("active");
   for (let i = 1; i <= 10; i++) setStepState(i, "idle");
   setProgress(0);
   $("elapsed-time").textContent = "0.0s";
@@ -2249,6 +2379,12 @@ async function handleFile(file) {
 // STEP PROGRESSION CONTROLLER
 function setStepState(stepNum, status) {
   const el = $("step-" + stepNum);
+  const hEl = $("h-step-" + stepNum);
+  if (hEl) {
+    hEl.classList.remove("active", "completed");
+    if (status === "active") hEl.classList.add("active");
+    else if (status === "completed") hEl.classList.add("completed");
+  }
   if (!el) return;
   el.classList.remove("active", "completed");
   const icon = el.querySelector(".step-icon");
