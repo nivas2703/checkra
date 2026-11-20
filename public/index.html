@@ -1956,9 +1956,79 @@ const state = {
   selectedPassageIndex: -1,
   isAnalyzing: false,
   isExtracting: false,
+  status: "idle", // 'idle' | 'extracting' | 'analyzing' | 'completed' | 'error'
   startTime: 0,
   timerInterval: null
 };
+
+// STRICT STATE MACHINE TRANSITION CONTROLLER
+function transitionTo(nextStatus, payload = {}) {
+  state.status = nextStatus;
+  switch (nextStatus) {
+    case "idle":
+      state.isExtracting = false;
+      state.isAnalyzing = false;
+      stopTimer();
+      setExtractionLoading(false);
+      $("quick-score-card").style.display = "none";
+      $("analysis-failure-card").style.display = "none";
+      if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "block";
+      resetAnalysisCard();
+      break;
+
+    case "extracting":
+      state.isExtracting = true;
+      state.isAnalyzing = false;
+      $("quick-score-card").style.display = "none";
+      $("analysis-failure-card").style.display = "none";
+      setExtractionLoading(true, payload.fileName);
+      setStepState(1, "active");
+      break;
+
+    case "analyzing":
+      state.isExtracting = false;
+      state.isAnalyzing = true;
+      $("quick-score-card").style.display = "none";
+      $("analysis-failure-card").style.display = "none";
+      if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
+      $("analysis-card-title").textContent = "Checkra is Analyzing Your Document";
+      $("analysis-card-sub").textContent = "Examining your writing for similarity, originality, and source evidence.";
+      for (let i = 1; i <= 10; i++) {
+        setStepState(i, "idle");
+        setStepTiming(i, "");
+      }
+      setProgress(10);
+      startTimer();
+      setStepState(1, "active");
+      setStepState(2, "active");
+      setProgress(25);
+      break;
+
+    case "completed":
+      state.isExtracting = false;
+      state.isAnalyzing = false;
+      stopTimer();
+      if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
+      $("analysis-failure-card").style.display = "none";
+      $("quick-score-card").style.display = "block";
+      break;
+
+    case "error":
+      state.isExtracting = false;
+      state.isAnalyzing = false;
+      stopTimer();
+      setExtractionLoading(false);
+      // Hard Gate: NEVER show quick-score-card or 0%/Grade A on failure
+      $("quick-score-card").style.display = "none";
+      if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
+      $("analysis-failure-card").style.display = "block";
+      if ($("failure-title-text")) $("failure-title-text").textContent = payload.title || "Checkra Analysis Notice";
+      $("failure-reason-text").textContent = payload.reason || "The analysis could not complete. Your document text has been safely preserved.";
+      $("analysis-card-title").textContent = "Checkra Analysis Halted";
+      $("analysis-card-sub").textContent = "No similarity result was generated.";
+      break;
+  }
+}
 
 // TAB SWITCHING
 function switchTab(tabId) {
@@ -2021,10 +2091,7 @@ function clearLoadedDoc() {
 }
 
 function resetToAwaiting() {
-  $("quick-score-card").style.display = "none";
-  $("analysis-failure-card").style.display = "none";
-  if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "block";
-  resetAnalysisCard();
+  transitionTo("idle");
 }
 
 function resetAnalysisCard() {
@@ -2036,11 +2103,11 @@ function resetAnalysisCard() {
 }
 
 function retryFromFailure() {
-  $("analysis-failure-card").style.display = "none";
-  if ($("doc-text").value.trim().length >= 20) {
+  const text = $("doc-text").value.trim();
+  if (text.length >= 20) {
     runAnalysis();
   } else {
-    resetToAwaiting();
+    transitionTo("idle");
   }
 }
 
@@ -2143,11 +2210,15 @@ async function handleFile(file) {
 
   // Binary files (PDF, DOCX) require server-side parsing via /api/extract
   if (ext === "pdf" || ext === "docx" || ext === "doc") {
-    setExtractionLoading(true, file.name);
+    transitionTo("extracting", { fileName: file.name });
     try {
       const formData = new FormData();
       formData.append("file", file);
       const result = await api.extract(formData);
+
+      if (result && result.success === false) {
+        throw new Error((result.error && result.error.message) || "Extraction failed");
+      }
 
       const text = (result && (result.rawText || result.text)) ? (result.rawText || result.text) : "";
       if (!text || text.trim().length === 0) {
@@ -2159,12 +2230,12 @@ async function handleFile(file) {
       showLoadedDocCard(file.name, sizeStr, ext.toUpperCase());
       resetAnalysisCard();
       setExtractionLoading(false);
+      state.status = "idle";
     } catch (err) {
-      setExtractionLoading(false);
-      showFailure(
-        "Document Extraction Failed",
-        "Checkra could not read this document: " + (err.message || "Failed to fetch") + ". No similarity result was generated."
-      );
+      transitionTo("error", {
+        title: "Document Extraction Failed",
+        reason: "Checkra could not read this document: " + (err.message || "Failed to fetch") + ". No similarity result was generated."
+      });
     }
     return;
   }
@@ -2227,15 +2298,7 @@ function stopTimer() {
 }
 
 function showFailure(title, reason) {
-  stopTimer();
-  state.isAnalyzing = false;
-  $("quick-score-card").style.display = "none";
-  if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
-  $("analysis-failure-card").style.display = "block";
-  if ($("failure-title-text")) $("failure-title-text").textContent = title || "Checkra Analysis Notice";
-  $("failure-reason-text").textContent = reason || "The analysis could not complete. Your document text has been safely preserved.";
-  $("analysis-card-title").textContent = "Checkra Analysis Halted";
-  $("analysis-card-sub").textContent = "No similarity result was generated.";
+  transitionTo("error", { title, reason });
 }
 
 // MAIN ANALYSIS CONTROLLER
@@ -2246,25 +2309,7 @@ async function runAnalysis() {
     return;
   }
 
-  state.isAnalyzing = true;
-  $("quick-score-card").style.display = "none";
-  $("analysis-failure-card").style.display = "none";
-  if ($("awaiting-analysis-card")) $("awaiting-analysis-card").style.display = "none";
-
-  $("analysis-card-title").textContent = "Checkra is Analyzing Your Document";
-  $("analysis-card-sub").textContent = "Examining your writing for similarity, originality, and source evidence.";
-
-  for (let i = 1; i <= 10; i++) {
-    setStepState(i, "idle");
-    setStepTiming(i, "");
-  }
-  setProgress(10);
-  startTimer();
-
-  // Active initial steps
-  setStepState(1, "active");
-  setStepState(2, "active");
-  setProgress(25);
+  transitionTo("analyzing");
 
   const payload = {
     text: text,
@@ -2327,18 +2372,17 @@ async function runAnalysis() {
     $("analysis-card-title").textContent = "Checkra Analysis Complete";
     $("analysis-card-sub").textContent = "Integrity evaluation finished with deterministic evidence verification.";
 
+    transitionTo("completed");
     state.currentAnalysis = result;
     renderResults(result);
 
   } catch (err) {
     stopTimer();
     console.error("Analysis error:", err);
-    showFailure(
-      "Checkra Analysis Failed",
-      err.message || "Serverless execution timeout or gateway error (HTTP 504). The document may be too large or the server timed out."
-    );
-  } finally {
-    state.isAnalyzing = false;
+    transitionTo("error", {
+      title: "Checkra Analysis Failed",
+      reason: err.message || "Serverless execution timeout or gateway error (HTTP 504). The document may be too large or the server timed out."
+    });
   }
 }
 

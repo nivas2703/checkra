@@ -15,8 +15,9 @@ const fs = require("fs");
 const path = require("path");
 const { executeAnalysis } = require("../server/services/analysisService");
 const { extractFromFile } = require("../server/document/extractor");
+const app = require("../server/server");
 
-const SERVER_BASE = "http://localhost:8787";
+let SERVER_BASE = process.env.TEST_SERVER_URL || "http://localhost:8787";
 
 async function postJson(url, data) {
   return new Promise((resolve, reject) => {
@@ -52,6 +53,22 @@ async function runRegressionSuite() {
   console.log("=================================================================");
   console.log("   CHECKRA PRODUCTION SIMILARITY REGRESSION SUITE");
   console.log("=================================================================\n");
+
+  let server = null;
+  try {
+    await new Promise((resolve, reject) => {
+      const u = new URL(SERVER_BASE);
+      const req = http.request({ hostname: u.hostname, port: u.port, path: "/api/health", method: "GET", timeout: 1000 }, resolve);
+      req.on("error", reject);
+      req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
+      req.end();
+    });
+  } catch (e) {
+    server = await new Promise(resolve => {
+      const s = app.listen(0, "127.0.0.1", () => resolve(s));
+    });
+    SERVER_BASE = `http://127.0.0.1:${server.address().port}`;
+  }
 
   let passed = 0;
   let total = 0;
@@ -180,6 +197,10 @@ async function runRegressionSuite() {
   console.log("\n=================================================================");
   console.log(`   REGRESSION RESULTS: ${passed}/${total} PASSED (0 Failures)`);
   console.log("=================================================================\n");
+
+  if (server) {
+    await new Promise(r => server.close(r));
+  }
 
   if (passed !== total) {
     process.exit(1);

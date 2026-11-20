@@ -121,17 +121,25 @@ async function runStabilizationTests() {
   console.log("\n--- 5. Backend HTTP Status & JSON Guarantees ---");
 
   await test("Express error middleware guarantees Content-Type: application/json", async () => {
-    const res = await fetch("http://localhost:8787/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "Short" }) // Too short (<20 chars) -> triggers error
+    const srv = await new Promise(resolve => {
+      const s = app.listen(0, "127.0.0.1", () => resolve(s));
     });
-    assert(res.status === 400 || res.status === 500, `Expected 400 or 500, got ${res.status}`);
-    const contentType = res.headers.get("content-type");
-    assert(contentType.includes("application/json"), `Expected application/json, got ${contentType}`);
-    const data = await res.json();
-    assert.strictEqual(data.success, false);
-    assert(data.error.message.includes("20 characters"));
+    const port = srv.address().port;
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Short" }) // Too short (<20 chars) -> triggers error
+      });
+      assert(res.status === 400 || res.status === 500, `Expected 400 or 500, got ${res.status}`);
+      const contentType = res.headers.get("content-type");
+      assert(contentType.includes("application/json"), `Expected application/json, got ${contentType}`);
+      const data = await res.json();
+      assert.strictEqual(data.success, false);
+      assert(data.error.message.includes("20 characters"));
+    } finally {
+      await new Promise(resolve => srv.close(resolve));
+    }
   });
 
   await test("Vercel api/index.js exports robust serverless handler with JSON guarantee", async () => {
