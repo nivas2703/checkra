@@ -1,5 +1,5 @@
 /**
- * Checkra AI Agent — Core Orchestrator (Phase 3)
+ * Checkra AI Agent — Core Orchestrator (Phase 3.1)
  *
  * Implements the reasoning, tool orchestration, web research, and source
  * verification layer above Checkra:
@@ -7,7 +7,7 @@
  * 2. Executes bounded internal Checkra tools (max 5 tools, max 3 searches, max 5 retrievals).
  * 3. Enforces 30-second total research budget.
  * 4. Preserves authoritative Checkra similarity scores without modification.
- * 5. Strictly protects against treating search snippets as proof of plagiarism.
+ * 5. Strictly protects against treating search snippets or topical similarity as proof of plagiarism.
  * 6. Synthesizes structured, defensible advice via Qwen3 1.7B.
  */
 
@@ -15,6 +15,7 @@ const { checkAiHealth, generateAiCompletion, getAiConfig } = require("./model");
 const { CHECKRA_SYSTEM_PROMPT } = require("./prompts");
 const { executeTool } = require("./tools");
 const { extractDomain } = require("./webSearchTool");
+const db = require("../db/database");
 const logger = require("../utils/logger");
 
 // STRICT TOOL LIMITS (Phase 3 - Step 9)
@@ -132,6 +133,64 @@ function parseAndValidateModelOutput(rawText, analysisToolResult = null) {
     confidence,
     structured
   };
+}
+
+/**
+ * Sanitizes LLM research explanations to guarantee that topical or conceptual similarity
+ * is never represented as an overall plagiarism or similarity percentage.
+ *
+ * @param {string} explanation
+ * @param {number|null} authoritativeScore
+ * @param {Array} sources
+ * @returns {string}
+ */
+function sanitizeResearchExplanation(explanation, authoritativeScore, sources = []) {
+  if (!explanation || typeof explanation !== "string") return explanation;
+
+  let sanitized = explanation;
+
+  if (authoritativeScore === null) {
+    // Prohibit hallucinating an overall score when no authoritative score was supplied
+    sanitized = sanitized
+      .replace(/(?:the\s+)?(?:overall\s+)?(?:similarity|plagiarism)\s+score\s+is\s+\d+%/gi, "no authoritative similarity score was provided")
+      .replace(/(?:with\s+a\s+)?(?:similarity|plagiarism)\s+score\s+of\s+\d+%/gi, "with no textual match")
+      .replace(/overall\s+(?:similarity|plagiarism)\s+(?:of\s+)?\d+%/gi, "topical similarity without textual overlap");
+  }
+
+  // Ensure topical similarity is not mischaracterized as verified plagiarism
+  const hasTextualMatch = sources.some(s => s.matchType === "EXACT_MATCH" || s.matchType === "NEAR_MATCH" || s.matchType === "STRONG_PARAPHRASE");
+  if (!hasTextualMatch) {
+    if (sanitized.includes("verified") && !sanitized.includes("not plagiarism") && !sanitized.includes("no textual")) {
+      sanitized = sanitized.replace(/is verified/gi, "is topically related, but no textual overlap was verified");
+    }
+  }
+
+  return sanitized.trim();
+}
+
+/**
+ * Sanitizes LLM research findings array
+ * @param {Array} findings
+ * @param {number|null} authoritativeScore
+ * @param {Array} sources
+ * @returns {Array}
+ */
+function sanitizeResearchFindings(findings = [], authoritativeScore, sources = []) {
+  if (!Array.isArray(findings)) return [];
+  const hasTextualMatch = sources.some(s => s.matchType === "EXACT_MATCH" || s.matchType === "NEAR_MATCH" || s.matchType === "STRONG_PARAPHRASE");
+
+  return findings.map(f => {
+    let clean = String(f);
+    if (authoritativeScore === null) {
+      clean = clean
+        .replace(/(?:the\s+)?(?:overall\s+)?(?:similarity|plagiarism)\s+score\s+is\s+\d+%/gi, "no authoritative similarity score was provided")
+        .replace(/(?:with\s+a\s+)?(?:similarity|plagiarism)\s+score\s+of\s+\d+%/gi, "with no textual match");
+    }
+    if (!hasTextualMatch && clean.includes("is verified") && !clean.includes("not plagiarism")) {
+      clean = clean.replace(/is verified/gi, "is topically related, but no textual overlap was verified");
+    }
+    return clean;
+  });
 }
 
 /**
@@ -264,7 +323,8 @@ CRITICAL INSTRUCTIONS:
         totalToolCalls++;
         sourceRetrievalCount++;
 
-        toolDataPromptSection += `- Source: "${cand.title}" (${cand.url})\n  Status: ${verifyRes.status} | Match Type: ${verifyRes.matchType} | Similarity: ${verifyRes.similarity || "N/A"}\n  Evidence: ${verifyRes.evidence}\n`;
+        const simStr = verifyRes.sourceSimilarity ? `Source-Level Similarity: ${verifyRes.sourceSimilarity}` : "No Textual Overlap";
+        toolDataPromptSection += `- Source: "${cand.title}" (${cand.url})\n  Status: ${verifyRes.status} | Match Classification: ${verifyRes.matchType} | ${simStr}\n  Evidence: ${verifyRes.evidence}\n`;
       }
     } else {
       toolDataPromptSection += `\n[WEB SEARCH RESULT]\nWeb search discovery returned no matching external candidate sources.\n`;
@@ -316,11 +376,11 @@ Respond strictly in the specified JSON format with keys: "summary", "findings", 
 /**
  * Dedicated Web Research and Source Verification Workflow (POST /api/agent/research)
  *
- * @param {Object} input Request containing { query, text, analysisId }
+ * @param {Object} input Request containing { query, text, analysis, analysisId }
  * @returns {Promise<Object>} Structured verification response
  */
 async function runCheckraResearch(input = {}) {
-  const { query, text, analysisId } = input;
+  const { query, text, analysis, analysisId } = input;
 
   // 1. Strict Request Validation
   if (!query || typeof query !== "string" || !query.trim()) {
@@ -342,13 +402,32 @@ async function runCheckraResearch(input = {}) {
   const cleanQuery = query.trim();
   const cleanPassage = text.trim();
 
+  // 2. Resolve Authoritative Checkra Score (Strictly from deterministic engine or session store)
+  let authoritativeScore = null;
+  let scoreStatus = "UNAVAILABLE";
+  let grade = null;
+
+  let targetAnalysis = analysis || null;
+  if (!targetAnalysis && analysisId) {
+    targetAnalysis = db.getSessionAnalysis(analysisId);
+  }
+
+  if (targetAnalysis && typeof targetAnalysis === "object") {
+    const sim = targetAnalysis.similarity || {};
+    if (typeof sim.score === "number" && !isNaN(sim.score)) {
+      authoritativeScore = sim.score;
+      scoreStatus = "AVAILABLE";
+      grade = sim.grade || null;
+    }
+  }
+
   // Bounded Tool Call Counters (Step 9)
   let totalToolCalls = 0;
   let webSearchCalls = 0;
   let sourceRetrievalCalls = 0;
   const toolsUsed = [];
 
-  // 2. Discover Candidate Web Sources via Search Tool
+  // 3. Discover Candidate Web Sources via Search Tool
   if (totalToolCalls >= MAX_TOTAL_TOOLS || webSearchCalls >= MAX_WEB_SEARCHES) {
     return {
       ok: false,
@@ -376,7 +455,7 @@ async function runCheckraResearch(input = {}) {
     };
   }
 
-  // 3. Retrieve and Verify Each Candidate Source
+  // 4. Retrieve and Verify Each Candidate Source
   const candidateResults = searchResult.results;
   const verifiedSources = [];
 
@@ -401,18 +480,19 @@ async function runCheckraResearch(input = {}) {
       domain: verification.domain || extractDomain(candidate.url),
       status: verification.status || "SOURCE_NOT_VERIFIABLE",
       matchType: verification.matchType || "NO_MATCH",
-      similarity: verification.similarity || "0%",
+      sourceSimilarity: verification.sourceSimilarity || null, // null for TOPICAL, CONCEPTUAL, NO_MATCH
+      similarity: verification.sourceSimilarity || null, // Backwards-compatible alias
       evidence: verification.evidence || (verification.status === "SOURCE_NOT_VERIFIABLE" ? `Source retrieval failed: ${verification.reason}` : "No evidence detected.")
     });
   }
 
-  // 4. Synthesize AI Explanation with Qwen3 1.7B
+  // 5. Synthesize AI Explanation with Qwen3 1.7B
   let aiExplanation = null;
   const health = await checkAiHealth();
 
   if (health.ok && health.available) {
     const verifiedList = verifiedSources.map((s, i) =>
-      `${i + 1}. [Status: ${s.status} | Match Classification: ${s.matchType} | Similarity: ${s.similarity}] "${s.title}" (${s.url})\n   Evidence: ${s.evidence}`
+      `${i + 1}. [Status: ${s.status} | Match Classification: ${s.matchType} | Source-Level Similarity: ${s.sourceSimilarity || "None (No Textual Overlap)"}] "${s.title}" (${s.url})\n   Evidence: ${s.evidence}`
     ).join("\n\n");
 
     const prompt = `${CHECKRA_SYSTEM_PROMPT}
@@ -423,15 +503,20 @@ async function runCheckraResearch(input = {}) {
 [DETERMINISTIC WEB SOURCE VERIFICATION EVIDENCE (READ-ONLY)]
 ${verifiedList}
 
+[AUTHORITATIVE CHECKRA SIMILARITY SCORE]
+${scoreStatus === "AVAILABLE" ? `${authoritativeScore}% (Grade ${grade}) [IMMUTABLE]` : "UNAVAILABLE — No authoritative Checkra document analysis was supplied for this inquiry."}
+
 [USER RESEARCH QUERY]
 ${cleanQuery}
 
 Respond strictly in the specified JSON format with keys: "summary", "findings", "evidence", "recommendations", "confidence".
-CRITICAL RULES:
-1. Clearly differentiate sources that are VERIFIED (actual textual or paraphrastic overlap) versus RETRIEVED (topical/conceptual overlap only) versus NO_MATCH.
-2. Only sources with status "VERIFIED" contain confirmed text overlap.
-3. If status is "RETRIEVED" or "NO_MATCH", state clearly that no textual match was found and that topical similarity is NOT plagiarism.
-4. Never classify topical or conceptual similarity as plagiarism.`;
+CRITICAL RULES (Phase 3.1 Score Semantics):
+1. AUTHORITATIVE SCORE IS IMMUTABLE: If Authoritative Score is UNAVAILABLE, you MUST NOT state, calculate, or invent an overall similarity score or plagiarism percentage.
+2. TOPICAL_SIMILARITY: The source is topically related, but no textual overlap was verified. This is NOT plagiarism. Never state a percentage for topical similarity.
+3. CONCEPTUAL_SIMILARITY: The source discusses related concepts, but this does not by itself establish plagiarism. Never state a percentage for conceptual similarity.
+4. EXACT_MATCH / NEAR_MATCH: The retrieved source contains an exact/near textual match.
+5. STRONG_PARAPHRASE / POSSIBLE_PARAPHRASE: The retrieved source contains evidence of possible/strong paraphrased overlap.
+6. Clearly distinguish between sources that have confirmed text overlap versus those that are only topically related.`;
 
     const completion = await generateAiCompletion(prompt, { timeoutMs: 30000 });
     if (completion.ok) {
@@ -439,12 +524,21 @@ CRITICAL RULES:
     }
   }
 
+  const rawSummary = aiExplanation ? aiExplanation.summary : "Source verification completed via deterministic comparison engines.";
+  const rawFindings = aiExplanation ? aiExplanation.findings : [];
+
+  const sanitizedExplanation = sanitizeResearchExplanation(rawSummary, authoritativeScore, verifiedSources);
+  const sanitizedFindings = sanitizeResearchFindings(rawFindings, authoritativeScore, verifiedSources);
+
   return {
     ok: true,
     query: cleanQuery,
+    text: cleanPassage,
+    authoritativeScore,
+    scoreStatus,
     sources: verifiedSources,
-    explanation: aiExplanation ? aiExplanation.summary : "Source verification completed via deterministic comparison engines.",
-    findings: aiExplanation ? aiExplanation.findings : [],
+    explanation: sanitizedExplanation,
+    findings: sanitizedFindings,
     evidence: aiExplanation ? aiExplanation.evidence : [],
     agent: {
       provider: getAiConfig().provider,

@@ -1,9 +1,9 @@
 /**
- * Checkra AI Agent — Source Verification Module
+ * Checkra AI Agent — Source Verification Module (Phase 3.1)
  *
  * Implements candidate source verification against document passages.
  *
- * STRICT ARCHITECTURAL RULES:
+ * STRICT ARCHITECTURAL & SCORE SEMANTICS RULES:
  * 1. A search snippet is DISCOVERY ONLY; it is NEVER marked VERIFIED.
  * 2. A source is marked VERIFIED ONLY after actual source retrieval and comparison.
  * 3. Never invent source text or quotes.
@@ -11,7 +11,10 @@
  * 5. Does NOT invent its own cosine formula, scoring formula, or thresholds.
  * 6. Distinguishes EXACT_MATCH, NEAR_MATCH, STRONG_PARAPHRASE, POSSIBLE_PARAPHRASE,
  *    CONCEPTUAL_SIMILARITY, TOPICAL_SIMILARITY, and NO_MATCH.
- * 7. Never classifies topical or conceptual similarity as plagiarism.
+ * 7. TOPICAL_SIMILARITY and CONCEPTUAL_SIMILARITY MUST NEVER be presented as an authoritative
+ *    plagiarism or similarity percentage. For topical/conceptual, sourceSimilarity is strictly null.
+ * 8. Only actual deterministic matches (EXACT, NEAR, STRONG_PARAPHRASE) have a sourceSimilarity value,
+ *    and it strictly reflects source-level comparison, NOT document-level plagiarism.
  */
 
 const { findExactMatches, toExactTokens } = require("../analysis/exactMatcher");
@@ -37,8 +40,7 @@ async function comparePassageWithSourceText(passage, sourceText, sourceUrl) {
     return {
       matchType: "NO_MATCH",
       status: "NO_MATCH",
-      similarityScore: 0,
-      similarityString: "0%",
+      sourceSimilarity: null,
       evidence: "Insufficient text provided for comparison.",
       isVerified: false
     };
@@ -53,14 +55,13 @@ async function comparePassageWithSourceText(passage, sourceText, sourceUrl) {
   const exactResult = findExactMatches(subTokens, srcTokens, 5, sourceUrl);
 
   if (exactResult.matches && exactResult.matches.length > 0) {
-    const bestMatch = exactResult.matches[0];
     const phrase = exactResult.matches.map(m => `"${m.phrase}"`).slice(0, 3).join(", ");
+    const exactPercent = exactResult.exactOverlapPercent || 100;
     return {
       matchType: "EXACT_MATCH",
       status: "VERIFIED",
-      similarityScore: exactResult.exactOverlapPercent || 100,
-      similarityString: `${exactResult.exactOverlapPercent || 100}%`,
-      evidence: `Exact verbatim phrase overlap detected (${exactResult.totalMatchedTokens} words): ${phrase}`,
+      sourceSimilarity: `${exactPercent}%`,
+      evidence: `The retrieved source contains an exact textual match (${exactResult.totalMatchedTokens} words): ${phrase}`,
       matchesCount: exactResult.matches.length,
       isVerified: true
     };
@@ -75,9 +76,8 @@ async function comparePassageWithSourceText(passage, sourceText, sourceUrl) {
       return {
         matchType: "NEAR_MATCH",
         status: "VERIFIED",
-        similarityScore: bestNear.similarityScore,
-        similarityString: `${bestNear.similarityScore}%`,
-        evidence: `Near-match paraphrase detected: "${bestNear.submittedSentence}" matched source with shared terms [${distinctiveStr}]`,
+        sourceSimilarity: `${bestNear.similarityScore}%`,
+        evidence: `The retrieved source contains a near textual match: "${bestNear.submittedSentence}" matched source with shared terms [${distinctiveStr}]`,
         matchesCount: nearMatches.length,
         isVerified: true
       };
@@ -91,7 +91,6 @@ async function comparePassageWithSourceText(passage, sourceText, sourceUrl) {
       const matches = semanticResult.matches || [];
 
       if (matches.length > 0) {
-        // Find match with highest evidentiary significance
         const priorityOrder = {
           "EXACT_MATCH": 7,
           "NEAR_MATCH": 6,
@@ -111,36 +110,34 @@ async function comparePassageWithSourceText(passage, sourceText, sourceUrl) {
           return {
             matchType: "STRONG_PARAPHRASE",
             status: "VERIFIED",
-            similarityScore: simScore,
-            similarityString: `${simScore}%`,
-            evidence: `Strong semantic paraphrase verified: ${topMatch.description || "Shared distinctive sentence structure"}`,
+            sourceSimilarity: `${simScore}%`,
+            evidence: `The retrieved source contains evidence of strong paraphrased overlap: ${topMatch.description || "Shared distinctive sentence structure"}`,
             isVerified: true
           };
         } else if (classification === "POSSIBLE_PARAPHRASE") {
           return {
             matchType: "POSSIBLE_PARAPHRASE",
             status: "POSSIBLE",
-            similarityScore: simScore,
-            similarityString: `${simScore}%`,
-            evidence: `Possible paraphrase detected (${simScore}% semantic similarity): ${topMatch.description || "Moderate lexical and conceptual overlap"}`,
+            sourceSimilarity: `${simScore}%`,
+            evidence: `The retrieved source contains evidence of possible paraphrased overlap (${simScore}% lexical similarity): ${topMatch.description || "Moderate lexical and conceptual overlap"}`,
             isVerified: false
           };
         } else if (classification === "CONCEPTUAL_SIMILARITY") {
+          // Rule: CONCEPTUAL_SIMILARITY must NEVER produce a source similarity percentage
           return {
             matchType: "CONCEPTUAL_SIMILARITY",
             status: "RETRIEVED",
-            similarityScore: simScore,
-            similarityString: `${simScore}%`,
-            evidence: `Conceptual similarity: passage and source share high-level themes, but lack direct textual or paraphrastic derivation.`,
+            sourceSimilarity: null,
+            evidence: "The source discusses related concepts, but this does not by itself establish plagiarism.",
             isVerified: false
           };
         } else if (classification === "TOPICAL_SIMILARITY") {
+          // Rule: TOPICAL_SIMILARITY must NEVER produce a source similarity percentage
           return {
             matchType: "TOPICAL_SIMILARITY",
             status: "RETRIEVED",
-            similarityScore: simScore,
-            similarityString: `${simScore}%`,
-            evidence: `Topical similarity: passage and source discuss similar subject matter, but textual composition is original.`,
+            sourceSimilarity: null,
+            evidence: "The source is topically related, but no textual overlap was verified.",
             isVerified: false
           };
         }
@@ -153,8 +150,7 @@ async function comparePassageWithSourceText(passage, sourceText, sourceUrl) {
   return {
     matchType: "NO_MATCH",
     status: "NO_MATCH",
-    similarityScore: 0,
-    similarityString: "0%",
+    sourceSimilarity: null,
     evidence: "No significant textual, near-match, or semantic overlap detected in the retrieved source.",
     isVerified: false
   };
@@ -183,6 +179,8 @@ async function verify_source(params = {}) {
       status: "SOURCE_NOT_VERIFIABLE",
       reason: "Missing or invalid candidate URL parameter.",
       matchType: "NO_MATCH",
+      sourceSimilarity: null,
+      similarity: null,
       isVerified: false
     };
   }
@@ -200,6 +198,8 @@ async function verify_source(params = {}) {
       status: "SOURCE_NOT_VERIFIABLE",
       reason: "Missing passage text to verify against candidate source.",
       matchType: "NO_MATCH",
+      sourceSimilarity: null,
+      similarity: null,
       isVerified: false
     };
   }
@@ -232,7 +232,8 @@ async function verify_source(params = {}) {
       sourceType: sourceClassification.type,
       status: "SOURCE_NOT_VERIFIABLE",
       matchType: "NO_MATCH",
-      similarity: "0%",
+      sourceSimilarity: null,
+      similarity: null,
       reason: failureReason,
       evidence: `Search candidate found, but source could not be retrieved (${failureReason}). Snippets cannot be verified.`,
       isVerified: false
@@ -250,7 +251,8 @@ async function verify_source(params = {}) {
     sourceType: sourceClassification.type,
     status: comparison.status,
     matchType: comparison.matchType,
-    similarity: comparison.similarityString,
+    sourceSimilarity: comparison.sourceSimilarity,
+    similarity: comparison.sourceSimilarity, // Backwards-compatible alias
     evidence: comparison.evidence,
     isVerified: comparison.isVerified
   };

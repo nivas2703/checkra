@@ -161,7 +161,7 @@ app.post("/api/agent", async (req, res) => {
 // POST /api/agent/research — Dedicated web search and source verification endpoint
 app.post("/api/agent/research", async (req, res) => {
   try {
-    const { query, text, analysisId } = req.body || {};
+    const { query, text, analysis, analysisId } = req.body || {};
     if (!query || typeof query !== "string" || !query.trim()) {
       return res.status(400).json({
         ok: false,
@@ -177,7 +177,7 @@ app.post("/api/agent/research", async (req, res) => {
       });
     }
 
-    const researchResult = await runCheckraResearch({ query, text, analysisId });
+    const researchResult = await runCheckraResearch({ query, text, analysis, analysisId });
     return res.json(researchResult);
   } catch (err) {
     logger.error("Agent research endpoint error", { error: err.message });
