@@ -16,7 +16,8 @@
     "test:large-doc": "node test/large_doc_audit.js",
     "test:timeout": "node test/timeout_resilience_test.js",
     "test:ai": "node test/local_ai_ollama_test.js",
-    "test:agent": "node test/checkra_ai_agent_test.js"
+    "test:agent": "node test/checkra_ai_agent_test.js",
+    "test:research": "node test/checkra_web_research_test.js"
   },
   "engines": {
     "node": ">=18.0.0"

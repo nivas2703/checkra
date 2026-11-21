@@ -1,9 +1,15 @@
 /**
  * Checkra AI Agent — Tool Registry
  *
- * Implements deterministic read-only access to existing Checkra analysis state.
- * Tools do NOT recalculate scores, fabricate data, or access external systems.
+ * Implements deterministic read-only access to existing Checkra analysis state,
+ * provider-agnostic web search, safe source retrieval, and source verification.
+ *
+ * Tools do NOT recalculate scores, fabricate data, or access unauthorized systems.
  */
+
+const { web_search } = require("./webSearchTool");
+const { fetch_source } = require("./sourceTool");
+const { verify_source } = require("./sourceVerification");
 
 const TOOLS = {
   get_analysis_result: {
@@ -86,6 +92,34 @@ const TOOLS = {
         status: a.status || "completed"
       };
     }
+  },
+
+  web_search: {
+    name: "web_search",
+    description: "Searches the web for candidate sources matching a query for candidate source discovery only. Snippets are not verified proof.",
+    execute: async (context = {}) => {
+      const query = context.query || context.message || "";
+      const maxResults = context.maxResults || 5;
+      return await web_search(query, { maxResults });
+    }
+  },
+
+  fetch_source: {
+    name: "fetch_source",
+    description: "Safely fetches a candidate web page with SSRF protection, size bounding, and HTML extraction.",
+    execute: async (context = {}) => {
+      const url = context.url;
+      const timeoutMs = context.timeoutMs || 3000;
+      return await fetch_source(url, { timeoutMs });
+    }
+  },
+
+  verify_source: {
+    name: "verify_source",
+    description: "Compares a document passage against a retrieved source using Checkra's deterministic comparison engine.",
+    execute: async (context = {}) => {
+      return await verify_source(context);
+    }
   }
 };
 
@@ -94,7 +128,7 @@ const TOOLS = {
  *
  * @param {string} toolName Name of the tool to execute
  * @param {Object} context Context containing inputs/analysis
- * @returns {Object} Result of tool execution
+ * @returns {Object|Promise<Object>} Result of tool execution
  */
 function executeTool(toolName, context = {}) {
   const tool = TOOLS[toolName];

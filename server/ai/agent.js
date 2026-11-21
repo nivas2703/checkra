@@ -1,24 +1,27 @@
 /**
- * Checkra AI Agent — Core Orchestrator
+ * Checkra AI Agent — Core Orchestrator (Phase 3)
  *
- * Implements the reasoning and tool orchestration layer above Checkra:
- * 1. Understands user inquiry
- * 2. Selects and executes internal Checkra evidence tools
- * 3. Observes tool results without mutating deterministic scores
- * 4. Synthesizes structured, defensible advice via Qwen3 1.7B
- *
- * Safeguards:
- * - Authoritative score immutability (scores are strictly read-only)
- * - Inconsistency disclosure (flags discrepancies when components deviate from overall score)
- * - Missing score protection (never assumes or fabricates 0% when score is absent)
- * - Bounded tool calls (Max 3)
- * - Safe JSON fallback parsing (never crashes server)
- * - Graceful degradation when AI provider is offline
+ * Implements the reasoning, tool orchestration, web research, and source
+ * verification layer above Checkra:
+ * 1. Understands user inquiry & identifies when web research is required.
+ * 2. Executes bounded internal Checkra tools (max 5 tools, max 3 searches, max 5 retrievals).
+ * 3. Enforces 30-second total research budget.
+ * 4. Preserves authoritative Checkra similarity scores without modification.
+ * 5. Strictly protects against treating search snippets as proof of plagiarism.
+ * 6. Synthesizes structured, defensible advice via Qwen3 1.7B.
  */
 
 const { checkAiHealth, generateAiCompletion, getAiConfig } = require("./model");
 const { CHECKRA_SYSTEM_PROMPT } = require("./prompts");
 const { executeTool } = require("./tools");
+const { extractDomain } = require("./webSearchTool");
+const logger = require("../utils/logger");
+
+// STRICT TOOL LIMITS (Phase 3 - Step 9)
+const MAX_TOTAL_TOOLS = 5;
+const MAX_WEB_SEARCHES = 3;
+const MAX_SOURCE_RETRIEVALS = 5;
+const MAX_RESEARCH_TIMEOUT_MS = 30000;
 
 /**
  * Attempts to parse and validate the model's response as the required JSON schema,
@@ -115,7 +118,6 @@ function parseAndValidateModelOutput(rawText, analysisToolResult = null) {
       }
 
       // Rule 1 & Rule B: Authoritative score must be preserved; never let LLM hallucinate a different score
-      // If the summary contains a fabricated different overall score percentage, note the authoritative score
       if (!summary.includes(`${authScore}%`)) {
         findings.unshift(`Authoritative Checkra Overall Score: ${authScore}% (immutable).`);
       }
@@ -133,13 +135,37 @@ function parseAndValidateModelOutput(rawText, analysisToolResult = null) {
 }
 
 /**
+ * Determines whether a user message requires web research
+ * @param {string} message
+ * @param {Object} input
+ * @returns {boolean}
+ */
+function requiresWebResearch(message = "", input = {}) {
+  if (input.text || input.passage || input.url) return true;
+  const lower = message.toLowerCase();
+  const searchPhrases = [
+    "where did this passage come from",
+    "where does this passage come from",
+    "search the web",
+    "search the internet",
+    "find sources",
+    "verify this source",
+    "candidate sources",
+    "is this source",
+    "who wrote this",
+    "online source"
+  ];
+  return searchPhrases.some(phrase => lower.includes(phrase));
+}
+
+/**
  * Runs the Checkra AI Agent on a user inquiry and optional analysis context.
  *
- * @param {Object} input Request input containing { message, analysis }
+ * @param {Object} input Request input containing { message, analysis, text, passage }
  * @returns {Promise<Object>} Structured agent outcome
  */
 async function runCheckraAgent(input = {}) {
-  const { message, analysis } = input;
+  const { message, analysis, text, passage } = input;
 
   // 1. Request validation
   if (!message || typeof message !== "string" || !message.trim()) {
@@ -161,18 +187,22 @@ async function runCheckraAgent(input = {}) {
   }
 
   // 3. Tool Selection & Execution (Bounded)
+  let totalToolCalls = 0;
+  let webSearchCount = 0;
+  let sourceRetrievalCount = 0;
   const toolsUsed = [];
   let toolDataPromptSection = "";
   let analysisToolResult = null;
 
-  // If analysis is provided, invoke get_analysis_result tool
-  if (analysis && typeof analysis === "object") {
+  // A. If analysis is provided, invoke get_analysis_result tool
+  if (analysis && typeof analysis === "object" && totalToolCalls < MAX_TOTAL_TOOLS) {
     analysisToolResult = executeTool("get_analysis_result", { analysis });
     toolsUsed.push("get_analysis_result");
+    totalToolCalls++;
 
     if (analysisToolResult.available) {
       if (!analysisToolResult.hasScore) {
-        toolDataPromptSection = `
+        toolDataPromptSection += `
 [CHECKRA DETERMINISTIC ANALYSIS EVIDENCE (READ-ONLY)]
 - Analysis ID: ${analysisToolResult.analysisId}
 - Document Title: "${analysisToolResult.documentTitle}" (${analysisToolResult.wordCount} words)
@@ -185,7 +215,7 @@ async function runCheckraAgent(input = {}) {
 CRITICAL INSTRUCTION: The similarity score is unavailable for this document. You MUST explicitly state that the similarity score is unavailable. Do NOT assume, invent, or output 0% or any percentage score.
 `;
       } else {
-        toolDataPromptSection = `
+        toolDataPromptSection += `
 [CHECKRA DETERMINISTIC ANALYSIS EVIDENCE (READ-ONLY)]
 - Analysis ID: ${analysisToolResult.analysisId}
 - Document Title: "${analysisToolResult.documentTitle}" (${analysisToolResult.wordCount} words)
@@ -210,7 +240,38 @@ CRITICAL INSTRUCTIONS:
 `;
       }
     }
-  } else {
+  }
+
+  // B. If user asks for web research or supplies a passage to investigate
+  const targetPassage = text || passage || (requiresWebResearch(message, input) ? message : null);
+  if (targetPassage && requiresWebResearch(message, input) && totalToolCalls < MAX_TOTAL_TOOLS && webSearchCount < MAX_WEB_SEARCHES) {
+    const searchTerms = targetPassage.split(/\s+/).slice(0, 8).join(" ");
+    const searchRes = await executeTool("web_search", { query: searchTerms, maxResults: 3 });
+    toolsUsed.push("web_search");
+    totalToolCalls++;
+    webSearchCount++;
+
+    if (searchRes.ok && Array.isArray(searchRes.results) && searchRes.results.length > 0) {
+      toolDataPromptSection += `\n[WEB SEARCH DISCOVERY RESULTS (CANDIDATES ONLY - NOT VERIFIED PROOF)]\n`;
+      for (const cand of searchRes.results.slice(0, 2)) {
+        if (totalToolCalls >= MAX_TOTAL_TOOLS || sourceRetrievalCount >= MAX_SOURCE_RETRIEVALS) break;
+        const verifyRes = await executeTool("verify_source", {
+          passage: targetPassage,
+          url: cand.url,
+          title: cand.title
+        });
+        toolsUsed.push("verify_source");
+        totalToolCalls++;
+        sourceRetrievalCount++;
+
+        toolDataPromptSection += `- Source: "${cand.title}" (${cand.url})\n  Status: ${verifyRes.status} | Match Type: ${verifyRes.matchType} | Similarity: ${verifyRes.similarity || "N/A"}\n  Evidence: ${verifyRes.evidence}\n`;
+      }
+    } else {
+      toolDataPromptSection += `\n[WEB SEARCH RESULT]\nWeb search discovery returned no matching external candidate sources.\n`;
+    }
+  }
+
+  if (!toolDataPromptSection) {
     toolDataPromptSection = `
 [NOTE]
 No Checkra document analysis was provided with this query. If the user asks about their score, document, or specific matches, clearly mention that no document analysis is currently loaded, and explain general writing integrity concepts.
@@ -252,7 +313,153 @@ Respond strictly in the specified JSON format with keys: "summary", "findings", 
   };
 }
 
+/**
+ * Dedicated Web Research and Source Verification Workflow (POST /api/agent/research)
+ *
+ * @param {Object} input Request containing { query, text, analysisId }
+ * @returns {Promise<Object>} Structured verification response
+ */
+async function runCheckraResearch(input = {}) {
+  const { query, text, analysisId } = input;
+
+  // 1. Strict Request Validation
+  if (!query || typeof query !== "string" || !query.trim()) {
+    return {
+      ok: false,
+      error: "INVALID_REQUEST",
+      message: "A non-empty query string is required."
+    };
+  }
+
+  if (!text || typeof text !== "string" || !text.trim()) {
+    return {
+      ok: false,
+      error: "INVALID_REQUEST",
+      message: "A non-empty passage text string is required for source verification."
+    };
+  }
+
+  const cleanQuery = query.trim();
+  const cleanPassage = text.trim();
+
+  // Bounded Tool Call Counters (Step 9)
+  let totalToolCalls = 0;
+  let webSearchCalls = 0;
+  let sourceRetrievalCalls = 0;
+  const toolsUsed = [];
+
+  // 2. Discover Candidate Web Sources via Search Tool
+  if (totalToolCalls >= MAX_TOTAL_TOOLS || webSearchCalls >= MAX_WEB_SEARCHES) {
+    return {
+      ok: false,
+      status: "LIMIT_EXCEEDED",
+      message: "Maximum tool limits reached."
+    };
+  }
+
+  // Construct search query from query or passage
+  const searchQuery = cleanQuery.length >= 10 && !cleanQuery.endsWith("?")
+    ? cleanQuery
+    : cleanPassage.split(/\s+/).slice(0, 10).join(" ");
+
+  const searchResult = await executeTool("web_search", { query: searchQuery, maxResults: 5 });
+  toolsUsed.push("web_search");
+  totalToolCalls++;
+  webSearchCalls++;
+
+  // Step 12: Search failure behavior
+  if (!searchResult.ok || !Array.isArray(searchResult.results) || searchResult.results.length === 0) {
+    return {
+      ok: false,
+      status: "SEARCH_UNAVAILABLE",
+      message: "Web search is temporarily unavailable."
+    };
+  }
+
+  // 3. Retrieve and Verify Each Candidate Source
+  const candidateResults = searchResult.results;
+  const verifiedSources = [];
+
+  for (const candidate of candidateResults) {
+    if (totalToolCalls >= MAX_TOTAL_TOOLS || sourceRetrievalCalls >= MAX_SOURCE_RETRIEVALS) {
+      break;
+    }
+
+    const verification = await executeTool("verify_source", {
+      passage: cleanPassage,
+      url: candidate.url,
+      title: candidate.title
+    });
+
+    toolsUsed.push("verify_source");
+    totalToolCalls++;
+    sourceRetrievalCalls++;
+
+    verifiedSources.push({
+      url: candidate.url,
+      title: verification.title || candidate.title || extractDomain(candidate.url),
+      domain: verification.domain || extractDomain(candidate.url),
+      status: verification.status || "SOURCE_NOT_VERIFIABLE",
+      matchType: verification.matchType || "NO_MATCH",
+      similarity: verification.similarity || "0%",
+      evidence: verification.evidence || (verification.status === "SOURCE_NOT_VERIFIABLE" ? `Source retrieval failed: ${verification.reason}` : "No evidence detected.")
+    });
+  }
+
+  // 4. Synthesize AI Explanation with Qwen3 1.7B
+  let aiExplanation = null;
+  const health = await checkAiHealth();
+
+  if (health.ok && health.available) {
+    const verifiedList = verifiedSources.map((s, i) =>
+      `${i + 1}. [Status: ${s.status} | Match Classification: ${s.matchType} | Similarity: ${s.similarity}] "${s.title}" (${s.url})\n   Evidence: ${s.evidence}`
+    ).join("\n\n");
+
+    const prompt = `${CHECKRA_SYSTEM_PROMPT}
+
+[INVESTIGATED PASSAGE]
+"${cleanPassage}"
+
+[DETERMINISTIC WEB SOURCE VERIFICATION EVIDENCE (READ-ONLY)]
+${verifiedList}
+
+[USER RESEARCH QUERY]
+${cleanQuery}
+
+Respond strictly in the specified JSON format with keys: "summary", "findings", "evidence", "recommendations", "confidence".
+CRITICAL RULES:
+1. Clearly differentiate sources that are VERIFIED (actual textual or paraphrastic overlap) versus RETRIEVED (topical/conceptual overlap only) versus NO_MATCH.
+2. Only sources with status "VERIFIED" contain confirmed text overlap.
+3. If status is "RETRIEVED" or "NO_MATCH", state clearly that no textual match was found and that topical similarity is NOT plagiarism.
+4. Never classify topical or conceptual similarity as plagiarism.`;
+
+    const completion = await generateAiCompletion(prompt, { timeoutMs: 30000 });
+    if (completion.ok) {
+      aiExplanation = parseAndValidateModelOutput(completion.response);
+    }
+  }
+
+  return {
+    ok: true,
+    query: cleanQuery,
+    sources: verifiedSources,
+    explanation: aiExplanation ? aiExplanation.summary : "Source verification completed via deterministic comparison engines.",
+    findings: aiExplanation ? aiExplanation.findings : [],
+    evidence: aiExplanation ? aiExplanation.evidence : [],
+    agent: {
+      provider: getAiConfig().provider,
+      model: getAiConfig().model
+    },
+    toolsUsed
+  };
+}
+
 module.exports = {
   runCheckraAgent,
-  parseAndValidateModelOutput
+  runCheckraResearch,
+  parseAndValidateModelOutput,
+  MAX_TOTAL_TOOLS,
+  MAX_WEB_SEARCHES,
+  MAX_SOURCE_RETRIEVALS,
+  MAX_RESEARCH_TIMEOUT_MS
 };

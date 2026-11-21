@@ -20,7 +20,7 @@ const { rewriteText, MODES } = require("./providers/rewriteProvider");
 const { checkGrammar } = require("./providers/grammarProvider");
 const { isGeminiConfigured, getGeminiModel, testGeminiConnection, testGeminiGrounding } = require("./services/geminiService");
 const { checkAiHealth, generateAiCompletion } = require("./ai/model");
-const { runCheckraAgent } = require("./ai/agent");
+const { runCheckraAgent, runCheckraResearch } = require("./ai/agent");
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
@@ -137,7 +137,7 @@ app.post("/api/ai/test", async (req, res) => {
 // POST /api/agent — Checkra AI Agent reasoning orchestrator
 app.post("/api/agent", async (req, res) => {
   try {
-    const { message, analysis } = req.body || {};
+    const { message, analysis, text, passage } = req.body || {};
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
         ok: false,
@@ -146,7 +146,7 @@ app.post("/api/agent", async (req, res) => {
       });
     }
 
-    const agentResult = await runCheckraAgent({ message, analysis });
+    const agentResult = await runCheckraAgent({ message, analysis, text, passage });
     return res.json(agentResult);
   } catch (err) {
     logger.error("Agent orchestrator endpoint error", { error: err.message });
@@ -154,6 +154,37 @@ app.post("/api/agent", async (req, res) => {
       ok: false,
       error: "AGENT_EXECUTION_ERROR",
       message: "An error occurred while executing the AI agent."
+    });
+  }
+});
+
+// POST /api/agent/research — Dedicated web search and source verification endpoint
+app.post("/api/agent/research", async (req, res) => {
+  try {
+    const { query, text, analysisId } = req.body || {};
+    if (!query || typeof query !== "string" || !query.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty query string is required."
+      });
+    }
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty passage text string is required for source verification."
+      });
+    }
+
+    const researchResult = await runCheckraResearch({ query, text, analysisId });
+    return res.json(researchResult);
+  } catch (err) {
+    logger.error("Agent research endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "AGENT_RESEARCH_ERROR",
+      message: "An error occurred during web source research and verification."
     });
   }
 });
