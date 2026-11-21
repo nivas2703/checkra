@@ -19,6 +19,8 @@ const { generateReportPackage, DISCLAIMER_TEXT, AI_DISCLAIMER_TEXT } = require("
 const { rewriteText, MODES } = require("./providers/rewriteProvider");
 const { checkGrammar } = require("./providers/grammarProvider");
 const { isGeminiConfigured, getGeminiModel, testGeminiConnection, testGeminiGrounding } = require("./services/geminiService");
+const { checkAiHealth, generateAiCompletion } = require("./ai/model");
+const { runCheckraAgent } = require("./ai/agent");
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
@@ -87,6 +89,73 @@ app.get("/api/health", async (req, res) => {
     embeddings: embeddingReady ? "Configured (API)" : "Local Mathematical Vectorizer",
     version: "2.5.0"
   });
+});
+
+// GET /api/ai/health — Diagnostic health of local Ollama / AI Provider
+app.get("/api/ai/health", async (req, res) => {
+  try {
+    const health = await checkAiHealth();
+    res.json(health);
+  } catch (err) {
+    logger.error("AI health check endpoint error", { error: err.message });
+    res.json({
+      ok: false,
+      provider: "ollama",
+      model: "qwen3:1.7b",
+      configured: true,
+      available: false,
+      error: "OLLAMA_UNAVAILABLE"
+    });
+  }
+});
+
+// POST /api/ai/test — Development test endpoint for AI generation
+app.post("/api/ai/test", async (req, res) => {
+  try {
+    const { prompt } = req.body || {};
+    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "EMPTY_PROMPT",
+        message: "A non-empty prompt string is required."
+      });
+    }
+
+    const result = await generateAiCompletion(prompt);
+    res.json(result);
+  } catch (err) {
+    logger.error("AI test endpoint error", { error: err.message });
+    res.status(500).json({
+      ok: false,
+      provider: "ollama",
+      model: "qwen3:1.7b",
+      error: "AI_GENERATION_FAILED"
+    });
+  }
+});
+
+// POST /api/agent — Checkra AI Agent reasoning orchestrator
+app.post("/api/agent", async (req, res) => {
+  try {
+    const { message, analysis } = req.body || {};
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty user message string is required."
+      });
+    }
+
+    const agentResult = await runCheckraAgent({ message, analysis });
+    return res.json(agentResult);
+  } catch (err) {
+    logger.error("Agent orchestrator endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "AGENT_EXECUTION_ERROR",
+      message: "An error occurred while executing the AI agent."
+    });
+  }
 });
 
 // POST /api/extract — Multipart file extraction for PDF, DOCX, TXT, MD, HTML
