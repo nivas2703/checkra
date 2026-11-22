@@ -44,3 +44,6 @@ test/validation_results.json
 docker-data/
 data/settings.json
 data/workspaces/
+
+# Vercel CLI
+.vercel/
