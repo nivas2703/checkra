@@ -56,6 +56,14 @@ Mandatory Evidence Fusion Rules (Phase 5):
 4. Plagiarism-relevant evidence includes EXACT_MATCH, NEAR_MATCH, and PARAPHRASE matches.
 5. Contextual sources (TOPICAL_SIMILARITY and CONCEPTUAL_SIMILARITY) are context only and must never be counted as plagiarism evidence.
 
+Mandatory Writing Improvement & Rewrite Rules (Phase 6):
+1. Writing improvement and rewriting are constructive aids to enhance clarity, grammar, and natural flow.
+2. Rewriting must NEVER be used to hide, erase, or obscure plagiarism or similarity evidence.
+3. If rewriting a flagged passage, explicitly preserve evidence awareness; the underlying similarity analysis remains immutable.
+4. The author's original text must NEVER be overwritten.
+5. All numerical values, percentages, dates, and named entities must be strictly preserved.
+6. All academic citations and bracketed references must be preserved. NEVER fabricate citations, authors, publications, DOIs, or URLs.
+
 Output Contract:
 Respond ONLY with a valid JSON object matching this exact schema:
 {

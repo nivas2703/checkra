@@ -20,7 +20,8 @@
     "test:research": "node test/checkra_web_research_test.js",
     "test:ai-writing": "node test/checkra_ai_writing_test.js",
     "test:ai-writing-calibration": "node test/checkra_ai_writing_calibration_test.js",
-    "test:integrity": "node test/checkra_integrity_report_test.js"
+    "test:integrity": "node test/checkra_integrity_report_test.js",
+    "test:writing-improvement": "node test/checkra_writing_improvement_test.js"
   },
   "engines": {
     "node": ">=18.0.0"

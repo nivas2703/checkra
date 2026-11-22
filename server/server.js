@@ -23,6 +23,8 @@ const { checkAiHealth, generateAiCompletion } = require("./ai/model");
 const { runCheckraAgent, runCheckraResearch } = require("./ai/agent");
 const { detectAiWriting } = require("./ai/aiWritingDetector");
 const { generateIntegrityReport } = require("./ai/evidenceFusion");
+const { analyzeWritingQuality } = require("./ai/writingImprovement");
+const { rewriteText: aiRewriteText } = require("./ai/rewriteEngine");
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
@@ -287,6 +289,72 @@ app.post("/api/integrity-report", async (req, res) => {
       ok: false,
       error: "INTEGRITY_REPORT_ERROR",
       message: "An error occurred while generating the unified integrity report."
+    });
+  }
+});
+
+// POST /api/writing/improve — Multi-dimensional writing quality, grammar, and readability audit
+app.post("/api/writing/improve", async (req, res) => {
+  try {
+    const { text, options } = req.body || {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty text string is required for writing quality analysis."
+      });
+    }
+
+    const qualityResult = analyzeWritingQuality(text, options || {});
+    return res.json({
+      ok: true,
+      quality: qualityResult
+    });
+  } catch (err) {
+    logger.error("Writing improve endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WRITING_IMPROVEMENT_ERROR",
+      message: "An error occurred while analyzing writing quality."
+    });
+  }
+});
+
+// POST /api/writing/rewrite — Evidence-aware AI rewriting with entity & citation preservation
+app.post("/api/writing/rewrite", async (req, res) => {
+  try {
+    const { text, mode, evidence, preserveCitations, options } = req.body || {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty text string is required for rewriting."
+      });
+    }
+
+    const rewriteResult = await aiRewriteText({
+      text,
+      mode: mode || "clear-natural",
+      evidence: evidence || null,
+      preserveCitations: preserveCitations !== false,
+      options: options || {}
+    });
+
+    if (!rewriteResult.ok) {
+      const statusCode = rewriteResult.error === "AI_UNAVAILABLE" ? 503 : 400;
+      return res.status(statusCode).json(rewriteResult);
+    }
+
+    return res.json({
+      ok: true,
+      rewrite: rewriteResult
+    });
+  } catch (err) {
+    logger.error("Writing rewrite endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "REWRITE_EXECUTION_ERROR",
+      message: "An error occurred while executing the rewrite."
     });
   }
 });

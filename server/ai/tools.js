@@ -12,6 +12,8 @@ const { fetch_source } = require("./sourceTool");
 const { verify_source } = require("./sourceVerification");
 const { detectAiWriting } = require("./aiWritingDetector");
 const { generateIntegrityReport } = require("./evidenceFusion");
+const { analyzeWritingQuality } = require("./writingImprovement");
+const { rewriteText } = require("./rewriteEngine");
 
 const TOOLS = {
   get_analysis_result: {
@@ -159,6 +161,37 @@ const TOOLS = {
       return {
         available: true,
         report: res.report
+      };
+    }
+  },
+
+  analyze_writing_quality: {
+    name: "analyze_writing_quality",
+    description: "Evaluates text for grammatical, mechanical, stylistic, and readability issues. Read-only diagnostic quality analysis.",
+    execute: (context = {}) => {
+      const text = context.text || context.passage || context.documentText || "";
+      const res = analyzeWritingQuality(text, context.options || {});
+      return {
+        available: res.ok,
+        quality: res
+      };
+    }
+  },
+
+  rewrite_text: {
+    name: "rewrite_text",
+    description: "Performs evidence-aware rewriting in clear-natural, academic-readable, professional, concise, or simple-english modes while preserving factual meaning, numbers, dates, and citations.",
+    execute: async (context = {}) => {
+      const res = await rewriteText({
+        text: context.text || context.passage || "",
+        mode: context.mode || "clear-natural",
+        evidence: context.evidence || null,
+        preserveCitations: context.preserveCitations !== false,
+        options: context.options || {}
+      });
+      return {
+        available: res.ok,
+        rewrite: res
       };
     }
   }

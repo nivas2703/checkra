@@ -272,6 +272,52 @@ function requiresIntegrityReport(message = "", input = {}) {
 }
 
 /**
+ * Determines whether a user message or input requests writing quality / grammar auditing
+ * @param {string} message
+ * @param {Object} input
+ * @returns {boolean}
+ */
+function requiresWritingImprovement(message = "", input = {}) {
+  if (input.task === "improve" || input.task === "grammar" || input.grammar) return true;
+  const lower = message.toLowerCase();
+  const phrases = [
+    "check grammar",
+    "grammar check",
+    "writing quality",
+    "improve writing",
+    "spelling check",
+    "punctuation",
+    "readability",
+    "wordiness"
+  ];
+  return phrases.some(phrase => lower.includes(phrase));
+}
+
+/**
+ * Determines whether a user message or input requests rewriting
+ * @param {string} message
+ * @param {Object} input
+ * @returns {boolean}
+ */
+function requiresRewrite(message = "", input = {}) {
+  if (input.task === "rewrite" || input.rewrite) return true;
+  const lower = message.toLowerCase();
+  const phrases = [
+    "rewrite this",
+    "rewrite passage",
+    "rephrase this",
+    "rephrase passage",
+    "make it concise",
+    "academic-readable",
+    "clear-natural",
+    "simple english",
+    "rewrite in",
+    "reword"
+  ];
+  return phrases.some(phrase => lower.includes(phrase));
+}
+
+/**
  * Runs the Checkra AI Agent on a user inquiry and optional analysis context.
  *
  * @param {Object} input Request input containing { message, analysis, text, passage }
@@ -440,6 +486,55 @@ CRITICAL INSTRUCTIONS:
 1. Preserve absolute separation between Similarity Score and AI-Writing Likelihood.
 2. Integrity Confidence represents evidence quality and completeness, NOT a probability of plagiarism or AI generation.
 `;
+    }
+  }
+
+  // E. If user requests writing quality / grammar improvement
+  if (requiresWritingImprovement(message, input) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const targetText = text || passage || (analysis && (analysis.document?.text || analysis.text)) || message;
+    if (targetText) {
+      const qualRes = executeTool("analyze_writing_quality", { text: targetText });
+      if (qualRes.available && qualRes.quality) {
+        toolsUsed.push("analyze_writing_quality");
+        totalToolCalls++;
+        const q = qualRes.quality;
+        toolDataPromptSection += `
+[CHECKRA WRITING QUALITY AUDIT EVIDENCE (READ-ONLY)]
+- Status: ${q.status}
+- Quality Score: ${q.qualityScore}/100
+- Total Issues Detected: ${q.summary.total} (Grammar: ${q.summary.grammar}, Punctuation: ${q.summary.punctuation}, Wordiness: ${q.summary.wordiness}, Clarity: ${q.summary.clarity})
+- Top Issues:
+${q.issues.slice(0, 4).map(iss => `  - [${iss.type} - ${iss.severity}] "${iss.original}" -> Suggestion: "${iss.suggestion}" (${iss.explanation})`).join("\n") || "  (No mechanical or grammatical issues detected)"}
+`;
+      }
+    }
+  }
+
+  // F. If user requests rewriting
+  if (requiresRewrite(message, input) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const targetText = text || passage || (analysis && (analysis.document?.text || analysis.text)) || null;
+    if (targetText) {
+      const mode = input.mode || (message.toLowerCase().includes("academic") ? "academic-readable" : (message.toLowerCase().includes("concise") ? "concise" : (message.toLowerCase().includes("professional") ? "professional" : (message.toLowerCase().includes("simple") ? "simple-english" : "clear-natural"))));
+      const rewriteRes = await executeTool("rewrite_text", {
+        text: targetText,
+        mode,
+        evidence: input.evidence,
+        preserveCitations: input.preserveCitations !== false
+      });
+      if (rewriteRes.available && rewriteRes.rewrite) {
+        toolsUsed.push("rewrite_text");
+        totalToolCalls++;
+        const rw = rewriteRes.rewrite;
+        toolDataPromptSection += `
+[CHECKRA REWRITE RESULT (READ-ONLY)]
+- Mode: ${rw.modeName}
+- Citation Status: ${rw.citationStatus}
+- Evidence-Aware: ${rw.evidenceAware ? "YES (Flags " + rw.originalEvidenceClass + ")" : "NO"}
+${rw.warning ? `- Warning: "${rw.warning}"` : ""}
+- Rewritten Text:
+"${rw.rewrittenText}"
+`;
+      }
     }
   }
 
