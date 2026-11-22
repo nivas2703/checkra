@@ -15,6 +15,8 @@
  *    evidence fusion, AI-writing detection, writing improvement, and research modules without duplicate scoring logic.
  */
 
+const fs = require("fs");
+const path = require("path");
 const { detectAiWriting } = require("../ai/aiWritingDetector");
 const { generateIntegrityReport } = require("../ai/evidenceFusion");
 const { analyzeWritingQuality } = require("../ai/writingImprovement");
@@ -24,8 +26,56 @@ const { analyzeCitations, generateReferenceList } = require("../ai/citationAnaly
 const { researchDocument, researchClaim } = require("../ai/researchAssistant");
 const logger = require("../utils/logger");
 
-// In-memory workspace session storage (ephemeral, zero permanent disk tracking)
+// In-memory workspace session storage (ephemeral L1 cache)
 const workspaces = new Map();
+
+// Ephemeral workspace cache directory (L2 serverless persistence with strict 1-hour TTL)
+const WS_CACHE_DIR = process.env.VERCEL
+  ? path.join("/tmp", "checkra-workspaces")
+  : path.join(__dirname, "../../data/workspaces");
+
+const WS_TTL_MS = 3600 * 1000; // 1-hour expiration
+
+function persistToCache(ws) {
+  if (!ws || !ws.id) return;
+  try {
+    if (!fs.existsSync(WS_CACHE_DIR)) {
+      fs.mkdirSync(WS_CACHE_DIR, { recursive: true });
+    }
+    const safeId = ws.id.replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!safeId) return;
+    const filePath = path.join(WS_CACHE_DIR, `${safeId}.json`);
+    const record = {
+      savedAt: Date.now(),
+      expiresAt: Date.now() + WS_TTL_MS,
+      workspace: ws
+    };
+    fs.writeFileSync(filePath, JSON.stringify(record), "utf8");
+  } catch (e) {
+    logger.debug("Workspace ephemeral cache write skipped", { error: e.message });
+  }
+}
+
+function pruneExpiredCache() {
+  try {
+    if (!fs.existsSync(WS_CACHE_DIR)) return;
+    const files = fs.readdirSync(WS_CACHE_DIR);
+    const now = Date.now();
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      const p = path.join(WS_CACHE_DIR, file);
+      try {
+        const raw = fs.readFileSync(p, "utf8");
+        const record = JSON.parse(raw);
+        if (record && record.expiresAt && now >= record.expiresAt) {
+          fs.unlinkSync(p);
+        }
+      } catch (_) {
+        try { fs.unlinkSync(p); } catch (__) {}
+      }
+    }
+  } catch (_) {}
+}
 
 /**
  * Detects common academic and professional document sections.
@@ -206,6 +256,7 @@ function createWorkspace(params = {}) {
   };
 
   workspaces.set(workspaceId, workspace);
+  persistToCache(workspace);
   return {
     ok: true,
     workspace
@@ -220,7 +271,59 @@ function createWorkspace(params = {}) {
  */
 function getWorkspace(workspaceId) {
   if (!workspaceId) return null;
-  return workspaces.get(workspaceId) || null;
+  if (workspaces.has(workspaceId)) {
+    return workspaces.get(workspaceId);
+  }
+  // Try ephemeral L2 cache fallback (for warm/recycled serverless instances)
+  try {
+    const safeId = String(workspaceId).replace(/[^a-zA-Z0-9_-]/g, "");
+    if (safeId) {
+      const filePath = path.join(WS_CACHE_DIR, `${safeId}.json`);
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf8");
+        const record = JSON.parse(raw);
+        if (record && record.expiresAt && Date.now() < record.expiresAt && record.workspace) {
+          workspaces.set(workspaceId, record.workspace);
+          return record.workspace;
+        } else if (record && record.expiresAt && Date.now() >= record.expiresAt) {
+          try { fs.unlinkSync(filePath); } catch (_) {}
+        }
+      }
+    }
+  } catch (e) {
+    // Non-fatal
+  }
+  return null;
+}
+
+/**
+ * Synchronizes an active workspace session into memory and ephemeral cache (L3 stateless recovery).
+ *
+ * @param {Object} workspaceData
+ * @returns {Object}
+ */
+function syncWorkspace(workspaceData) {
+  if (!workspaceData || typeof workspaceData !== "object" || !workspaceData.id) {
+    return {
+      ok: false,
+      error: "INVALID_WORKSPACE_DATA",
+      message: "A valid workspace object with an id is required."
+    };
+  }
+  const safeId = String(workspaceData.id).replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safeId || safeId !== workspaceData.id) {
+    return {
+      ok: false,
+      error: "INVALID_WORKSPACE_ID",
+      message: "Workspace ID contains invalid characters."
+    };
+  }
+  workspaces.set(workspaceData.id, workspaceData);
+  persistToCache(workspaceData);
+  return {
+    ok: true,
+    workspace: workspaceData
+  };
 }
 
 /**
@@ -324,6 +427,7 @@ async function analyzeWorkspace(workspaceId, options = {}) {
 
     ws.workflow.status = "ready";
     ws.workflow.lastUpdated = new Date().toISOString();
+    persistToCache(ws);
 
     return {
       ok: true,
@@ -450,6 +554,7 @@ async function stageRewrite(workspaceId, params = {}) {
   };
 
   ws.writing.rewrites.push(rewriteRecord);
+  persistToCache(ws);
 
   return {
     ok: true,
@@ -517,6 +622,7 @@ function applyRewrite(workspaceId, params = {}) {
 
   ws.workflow.status = "editing";
   ws.workflow.lastUpdated = now;
+  persistToCache(ws);
 
   return {
     ok: true,
@@ -626,6 +732,7 @@ async function recheckWorkspace(workspaceId, options = {}) {
   };
 
   ws.comparison = comparison;
+  persistToCache(ws);
   return {
     ok: true,
     workspace: ws,
@@ -699,6 +806,7 @@ function exportWorkspace(workspaceId, format = "json") {
     for (const c of ws.research.citations) {
       md += `- ${c.raw} [${c.format}]\n`;
     }
+    md += `\n---\n*Disclaimer: Checkra provides deterministic similarity analysis, probabilistic stylometric AI-writing likelihood indicators, and evidence verification. It does not claim 100% detection accuracy, guaranteed originality, or conclusive proof of authorship.*\n`;
 
     return {
       ok: true,
@@ -713,7 +821,7 @@ function exportWorkspace(workspaceId, format = "json") {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${ws.document.title} — Checkra Academic Report</title>
+  <title>${ws.document.title} — Checkra Academic Workspace Report</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #1a1a2e; max-width: 800px; margin: 40px auto; padding: 0 20px; }
     h1 { color: #5b21b6; border-bottom: 2px solid #ddd; padding-bottom: 8px; }
@@ -721,16 +829,21 @@ function exportWorkspace(workspaceId, format = "json") {
     .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 24px; }
     .content { white-space: pre-wrap; background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 8px; }
     .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ede9fe; color: #6d28d9; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #71717a; }
   </style>
 </head>
 <body>
   <h1>${ws.document.title}</h1>
-  <div class="meta">Checkra Academic Workspace Verification • ${new Date().toLocaleDateString()} • ${ws.document.wordCount} words</div>
+  <div class="meta">Checkra Academic Workspace Report • ${new Date().toLocaleDateString()} • ${ws.document.wordCount} words</div>
   <div class="card">
     <h3>Integrity Findings</h3>
     <p>Similarity: <strong>${ws.analysis.similarity?.score ?? "N/A"}%</strong> | AI Likelihood: <strong>${ws.analysis.aiWriting?.likelihood ?? "N/A"}%</strong> | Quality Score: <strong>${ws.writing.quality?.qualityScore ?? "N/A"}/100</strong></p>
   </div>
   <div class="content">${ws.content.currentText}</div>
+  <div class="footer">
+    <p>Checkra Academic Workspace Report • <a href="https://nivora-niva.vercel.app/" target="_blank" style="color: #7c3aed; text-decoration: none;">A NIVORA Product</a></p>
+    <p>Disclaimer: Checkra provides deterministic similarity analysis, probabilistic stylometric AI-writing likelihood indicators, and evidence verification.</p>
+  </div>
 </body>
 </html>`;
 
@@ -760,19 +873,40 @@ function exportWorkspace(workspaceId, format = "json") {
 }
 
 /**
- * Resets / deletes workspace from memory.
+ * Resets / deletes workspace from memory and ephemeral cache.
  */
 function deleteWorkspace(workspaceId) {
-  return workspaces.delete(workspaceId);
+  const deleted = workspaces.delete(workspaceId);
+  try {
+    const safeId = String(workspaceId || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    if (safeId) {
+      const filePath = path.join(WS_CACHE_DIR, `${safeId}.json`);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  } catch (_) {}
+  return deleted;
 }
 
 function clearWorkspaces() {
   workspaces.clear();
+  try {
+    if (fs.existsSync(WS_CACHE_DIR)) {
+      const files = fs.readdirSync(WS_CACHE_DIR);
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          try { fs.unlinkSync(path.join(WS_CACHE_DIR, file)); } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {}
 }
 
 module.exports = {
   createWorkspace,
   getWorkspace,
+  syncWorkspace,
   analyzeWorkspace,
   getPassageContext,
   stageRewrite,
@@ -782,5 +916,6 @@ module.exports = {
   exportWorkspace,
   detectDocumentSections,
   deleteWorkspace,
-  clearWorkspaces
+  clearWorkspaces,
+  pruneExpiredCache
 };

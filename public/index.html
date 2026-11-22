@@ -2641,9 +2641,23 @@ const api = {
     });
     return parseApiResponse(res);
   },
-  async getWorkspace(id) {
-    const res = await fetch("/api/workspace/" + id);
+  async syncWorkspace(workspace) {
+    const res = await fetch("/api/workspace/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspace })
+    });
     return parseApiResponse(res);
+  },
+  async getWorkspace(id) {
+    let res = await fetch("/api/workspace/" + id);
+    let parsed = await parseApiResponse(res);
+    if (!parsed.ok && parsed.error === "WORKSPACE_NOT_FOUND" && state.currentWorkspace && state.currentWorkspace.id === id) {
+      await this.syncWorkspace(state.currentWorkspace);
+      res = await fetch("/api/workspace/" + id);
+      parsed = await parseApiResponse(res);
+    }
+    return parsed;
   },
   async analyzeWorkspace(id, options = {}) {
     const res = await fetch("/api/workspace/" + id + "/analyze", {

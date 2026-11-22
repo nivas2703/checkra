@@ -408,7 +408,7 @@ async function discoverCandidateSources(documentText, sentences = [], options = 
 
       const batchResult = await executeQueriesWithBudget(queries, searchFn, maxSources, 2500);
       candidates = batchResult.candidates;
-      if (batchResult.timedOut && candidates.length === 0) {
+      if (batchResult.timedOut || candidates.length === 0) {
         searchFailed = true;
       }
 

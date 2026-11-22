@@ -19,12 +19,15 @@
     "test:agent": "node test/checkra_ai_agent_test.js",
     "test:research": "node test/checkra_web_research_test.js",
     "test:ai-writing": "node test/checkra_ai_writing_test.js",
+    "test:ai-writing-cal": "node test/checkra_ai_writing_calibration_test.js",
     "test:ai-writing-calibration": "node test/checkra_ai_writing_calibration_test.js",
     "test:integrity": "node test/checkra_integrity_report_test.js",
+    "test:writing": "node test/checkra_writing_improvement_test.js",
     "test:writing-improvement": "node test/checkra_writing_improvement_test.js",
     "test:research-citation": "node test/checkra_research_citation_test.js",
     "test:workspace": "node test/checkra_workspace_test.js",
-    "test:ux": "node test/checkra_ux_acceptance_test.js"
+    "test:ux": "node test/checkra_ux_acceptance_test.js",
+    "test:production-validation": "node test/checkra_production_validation_test.js"
   },
   "engines": {
     "node": ">=18.0.0"

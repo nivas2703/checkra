@@ -31,6 +31,7 @@ const { researchClaim, researchDocument } = require("./ai/researchAssistant");
 const {
   createWorkspace,
   getWorkspace,
+  syncWorkspace,
   analyzeWorkspace,
   getPassageContext,
   stageRewrite,
@@ -47,6 +48,58 @@ app.use(cors());
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 app.use(express.static(path.join(__dirname, "../public")));
+
+// Lightweight serverless-compatible abuse protection & rate limiting
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 300;
+const MAX_HEAVY_PER_WINDOW = 120;
+
+app.use((req, res, next) => {
+  if (
+    req.path === "/api/health" ||
+    req.path === "/api/ai/health" ||
+    req.method === "OPTIONS" ||
+    req.headers["x-test-bypass"] === "1" ||
+    process.env.CHECKRA_DISABLE_RATE_LIMIT === "1"
+  ) {
+    return next();
+  }
+  const clientIp = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "127.0.0.1";
+  const now = Date.now();
+  let clientRecord = rateLimitMap.get(clientIp);
+
+  if (!clientRecord || (now - clientRecord.windowStart) > RATE_LIMIT_WINDOW_MS) {
+    clientRecord = { windowStart: now, count: 0, heavyCount: 0 };
+    rateLimitMap.set(clientIp, clientRecord);
+  }
+
+  clientRecord.count++;
+  const isHeavy = req.path.includes("/analyze") || req.path.includes("/research") || req.path.includes("/recheck");
+  if (isHeavy) {
+    clientRecord.heavyCount++;
+  }
+
+  if (rateLimitMap.size > 1000) {
+    for (const [ip, rec] of rateLimitMap.entries()) {
+      if (now - rec.windowStart > RATE_LIMIT_WINDOW_MS) {
+        rateLimitMap.delete(ip);
+      }
+    }
+  }
+
+  const limitExceeded = clientRecord.count > MAX_REQUESTS_PER_WINDOW || clientRecord.heavyCount > MAX_HEAVY_PER_WINDOW;
+  if (limitExceeded) {
+    res.setHeader("Retry-After", "60");
+    return res.status(429).json({
+      ok: false,
+      error: "RATE_LIMIT_EXCEEDED",
+      message: "Too many requests. Please slow down and try again shortly."
+    });
+  }
+
+  next();
+});
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -89,19 +142,23 @@ app.get("/api/health", async (req, res) => {
     groundingLive = "NOT CONFIGURED";
   }
 
+  const isPrivateSearchUrl = searchApiUrl && (searchApiUrl.includes("localhost") || searchApiUrl.includes("127.0.0.1") || searchApiUrl.includes("10.") || searchApiUrl.includes("192.168."));
+  const safeSearchUrl = isPrivateSearchUrl ? undefined : (searchApiUrl || undefined);
+
   res.json({
     ok: true,
     server: "OK",
     service: "Checkra AI Web Checker",
+    environment: process.env.VERCEL ? "production" : (process.env.NODE_ENV || "development"),
     gemini: geminiReady ? "CONFIGURED" : "NOT CONFIGURED",
     geminiModel: getGeminiModel(),
     geminiGrounding: groundingLive,
     externalSearch: externalSearchReady ? "CONFIGURED" : "NOT CONFIGURED",
     searchProvider: externalSearchReady ? (searchEngine.toLowerCase().includes("searx") ? "SearXNG" : searchEngine) : undefined,
-    searchUrl: searchApiUrl || undefined,
+    searchUrl: safeSearchUrl,
     searxngStatus: searxngLive,
     externalSearchProvider: externalSearchReady ? (searchEngine.toLowerCase().includes("searx") ? "SearXNG" : searchEngine) : undefined,
-    externalSearchUrl: searchApiUrl || undefined,
+    externalSearchUrl: safeSearchUrl,
     geminiLiveStatus: geminiLive ? (geminiLive.ok ? "CONNECTED_OK" : `ERROR: ${geminiLive.error}`) : undefined,
     grammar: grammarReady ? "Configured (LanguageTool)" : "Built-in Linguistic Engine",
     embeddings: embeddingReady ? "Configured (API)" : "Local Mathematical Vectorizer",
@@ -500,10 +557,46 @@ app.post("/api/workspace/create", (req, res) => {
   }
 });
 
+// POST /api/workspace/sync — Synchronizes an active workspace session (serverless continuity)
+app.post("/api/workspace/sync", (req, res) => {
+  try {
+    const { workspace } = req.body || {};
+    if (!workspace || !workspace.id) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A valid workspace object with an ID is required for synchronization."
+      });
+    }
+    const result = syncWorkspace(workspace);
+    if (!result.ok) {
+      return res.status(400).json(result);
+    }
+    return res.status(200).json(result);
+  } catch (err) {
+    logger.error("Workspace sync endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WORKSPACE_SYNC_ERROR",
+      message: "An error occurred while synchronizing the workspace."
+    });
+  }
+});
+
 // GET /api/workspace/:id — Retrieves current workspace state
 app.get("/api/workspace/:id", (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    let ws = getWorkspace(req.params.id);
+    if (!ws && req.headers["x-checkra-workspace-sync"]) {
+      try {
+        const rawSync = Buffer.from(req.headers["x-checkra-workspace-sync"], "base64").toString("utf8");
+        const parsed = JSON.parse(rawSync);
+        if (parsed && parsed.id === req.params.id) {
+          syncWorkspace(parsed);
+          ws = getWorkspace(req.params.id);
+        }
+      } catch (_) {}
+    }
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -1115,6 +1208,11 @@ app.get("/verify/:id", (req, res) => {
   res.send(html);
 });
 
+// Catch-all: SPA index.html
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
 // Express Error Handling Middleware - guarantees JSON response for API errors
 app.use((err, req, res, next) => {
   logger.error("Unhandled express error", { error: err.message, stack: err.stack });
@@ -1122,18 +1220,27 @@ app.use((err, req, res, next) => {
     return next(err);
   }
   res.setHeader("Content-Type", "application/json");
+
+  // Handle payload too large (413)
+  if (err.type === "entity.too.large" || err.code === "LIMIT_FILE_SIZE" || err.status === 413) {
+    return res.status(413).json({
+      ok: false,
+      success: false,
+      error: {
+        code: "PAYLOAD_TOO_LARGE",
+        message: "Request payload exceeds maximum allowed size (25MB)."
+      }
+    });
+  }
+
   res.status(err.status || 500).json({
+    ok: false,
     success: false,
     error: {
       code: err.code || "INTERNAL_ERROR",
       message: err.message || "An unexpected error occurred during processing."
     }
   });
-});
-
-// Catch-all: SPA index.html
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
 const PORT = Number(process.env.PORT || 8787);

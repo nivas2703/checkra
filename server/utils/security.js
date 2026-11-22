@@ -14,11 +14,15 @@ const BLOCKED_HOST_PATTERNS = [
   /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
   /^192\.168\./,
   /^169\.254\./, // AWS / cloud metadata
-  /^::1$/,
-  /^fc00:/i,
-  /^fe80:/i,
+  /^\[?::1\]?$/, // IPv6 loopback
+  /^\[?(fc00|fd00):/i, // IPv6 Unique local address
+  /^\[?fe80:/i, // IPv6 Link-local
+  /^instance-data$/i, // AWS metadata alias
+  /^metadata$/i, // Cloud metadata alias
   /\.local$/i,
-  /\.internal$/i
+  /\.internal$/i,
+  /\.corp$/i,
+  /\.lan$/i
 ];
 
 function isSafeUrl(urlString) {
@@ -32,6 +36,10 @@ function isSafeUrl(urlString) {
       if (pattern.test(hostname)) {
         return false;
       }
+    }
+    // Reject single-label internal hosts (e.g. http://instance-data or http://router)
+    if (!hostname.includes(".") && hostname !== "localhost") {
+      return false;
     }
     return true;
   } catch (e) {
