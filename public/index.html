@@ -3181,8 +3181,6 @@ async function runAnalysis() {
         console.warn("Workspace background sync notice:", e.message);
       }
     }
-      throw new Error("Similarity data missing in analysis response.");
-    }
 
     const score = (typeof sim.score === "number") ? sim.score :
                   (typeof sim.overallScore === "number") ? sim.overallScore :
@@ -3679,9 +3677,7 @@ async function applyStagedRewriteUi() {
   if (currentFullText.includes(orig)) {
     $("doc-text").value = currentFullText.replace(orig, imp);
   } else {
-    $("doc-text").value = currentFullText + "
-
-" + imp;
+    $("doc-text").value = currentFullText + "\n\n" + imp;
   }
   updateWordCounts();
 
@@ -3782,7 +3778,7 @@ function askAiAboutClaim(idx) {
   const claims = (state.currentWorkspace && state.currentWorkspace.research && state.currentWorkspace.research.claims) || [];
   const c = claims[idx];
   if (c) {
-    $("ai-chat-input").value = "Does the verified evidence support this claim: "" + (c.text || c.statement || '') + ""?";
+    $("ai-chat-input").value = "Does the verified evidence support this claim: \"" + (c.text || c.statement || '') + "\"?";
     sendAiMessage();
   }
 }
@@ -3881,9 +3877,7 @@ function downloadExport(format) {
   } else if (format === "html") {
     downloadHtmlReport();
   } else {
-    const text = "# " + ($("doc-title").value || "Research Document") + "
-
-" + $("doc-text").value;
+    const text = "# " + ($("doc-title").value || "Research Document") + "\n\n" + $("doc-text").value;
     const blob = new Blob([text], { type: "text/markdown" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
