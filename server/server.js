@@ -561,8 +561,8 @@ app.post("/api/workspace/:id/passage-context", (req, res) => {
       });
     }
 
-    const { passage, start, end } = req.body || {};
-    const passResult = getPassageContext(req.params.id, { passage, start, end });
+    const { passage, passageText, start, end } = req.body || {};
+    const passResult = getPassageContext(req.params.id, { passage: passage || passageText, start, end });
     if (!passResult.ok) {
       return res.status(400).json(passResult);
     }
@@ -589,8 +589,8 @@ app.post("/api/workspace/:id/rewrite", async (req, res) => {
       });
     }
 
-    const { passage, mode, options } = req.body || {};
-    const stageResult = await stageRewrite(req.params.id, { passage, mode, options });
+    const { passage, passageText, mode, options } = req.body || {};
+    const stageResult = await stageRewrite(req.params.id, { passage: passage || passageText, mode, options });
     if (!stageResult.ok) {
       return res.status(400).json(stageResult);
     }

@@ -23,7 +23,8 @@
     "test:integrity": "node test/checkra_integrity_report_test.js",
     "test:writing-improvement": "node test/checkra_writing_improvement_test.js",
     "test:research-citation": "node test/checkra_research_citation_test.js",
-    "test:workspace": "node test/checkra_workspace_test.js"
+    "test:workspace": "node test/checkra_workspace_test.js",
+    "test:ux": "node test/checkra_ux_acceptance_test.js"
   },
   "engines": {
     "node": ">=18.0.0"
