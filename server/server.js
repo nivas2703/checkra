@@ -21,6 +21,7 @@ const { checkGrammar } = require("./providers/grammarProvider");
 const { isGeminiConfigured, getGeminiModel, testGeminiConnection, testGeminiGrounding } = require("./services/geminiService");
 const { checkAiHealth, generateAiCompletion } = require("./ai/model");
 const { runCheckraAgent, runCheckraResearch } = require("./ai/agent");
+const { detectAiWriting } = require("./ai/aiWritingDetector");
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
@@ -189,6 +190,33 @@ app.post("/api/agent/research", async (req, res) => {
   }
 });
 
+// POST /api/ai-writing/analyze — Independent AI writing detection & stylometric likelihood
+app.post("/api/ai-writing/analyze", async (req, res) => {
+  try {
+    const { text, options } = req.body || {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty text string is required for AI writing analysis."
+      });
+    }
+
+    const aiWriting = await detectAiWriting(text, options || {});
+    return res.json({
+      ok: true,
+      aiWriting
+    });
+  } catch (err) {
+    logger.error("AI writing analyze endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "AI_WRITING_ANALYSIS_ERROR",
+      message: "An error occurred during AI writing detection."
+    });
+  }
+});
+
 // POST /api/extract — Multipart file extraction for PDF, DOCX, TXT, MD, HTML
 app.post("/api/extract", upload.single("file"), async (req, res) => {
   try {
@@ -249,6 +277,12 @@ app.post("/api/analyze", async (req, res) => {
       fileStats: fileStats || calculateTextStats(text, filename),
       options: mergedOptions
     });
+
+    try {
+      result.aiWriting = await detectAiWriting(text, { skipQualitative: true });
+    } catch (aiErr) {
+      logger.debug("AI writing detection attachment skipped", { error: aiErr.message });
+    }
 
     res.json({
       success: true,

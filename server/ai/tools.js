@@ -10,6 +10,7 @@
 const { web_search } = require("./webSearchTool");
 const { fetch_source } = require("./sourceTool");
 const { verify_source } = require("./sourceVerification");
+const { detectAiWriting } = require("./aiWritingDetector");
 
 const TOOLS = {
   get_analysis_result: {
@@ -119,6 +120,26 @@ const TOOLS = {
     description: "Compares a document passage against a retrieved source using Checkra's deterministic comparison engine.",
     execute: async (context = {}) => {
       return await verify_source(context);
+    }
+  },
+
+  analyze_ai_writing: {
+    name: "analyze_ai_writing",
+    description: "Evaluates document text for stylometric and structural characteristics associated with AI-generated writing. Returns probabilistic likelihood and signals, completely separate from plagiarism/similarity scores.",
+    execute: async (context = {}) => {
+      const text = context.text || context.analysis?.document?.text || context.documentText || "";
+      if (!text || typeof text !== "string" || !text.trim()) {
+        return {
+          available: false,
+          error: "EMPTY_TEXT",
+          message: "No document text was provided to analyze for AI writing characteristics."
+        };
+      }
+      const result = await detectAiWriting(text, context.options || {});
+      return {
+        available: true,
+        aiWriting: result
+      };
     }
   }
 };

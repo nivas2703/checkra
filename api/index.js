@@ -28,7 +28,8 @@ module.exports = (req, res) => {
       "/settings",
       "/analysis",
       "/ai",
-      "/agent"
+      "/agent",
+      "/ai-writing"
     ];
     if (knownApiPaths.some(p => urlWithoutQuery === p || urlWithoutQuery.startsWith(p + "/"))) {
       req.url = "/api" + req.url;
