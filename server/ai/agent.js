@@ -318,6 +318,81 @@ function requiresRewrite(message = "", input = {}) {
 }
 
 /**
+ * Determines whether a user message or input requests claim extraction
+ */
+function requiresClaimExtraction(message = "", input = {}) {
+  if (input.task === "claims" || input.extractClaims) return true;
+  const lower = message.toLowerCase();
+  const phrases = [
+    "extract claims",
+    "what claims",
+    "factual claims",
+    "factual statements",
+    "which statements",
+    "claims in my document",
+    "claims need citations",
+    "claims lack evidence"
+  ];
+  return phrases.some(phrase => lower.includes(phrase));
+}
+
+/**
+ * Determines whether a user message or input requests citation auditing
+ */
+function requiresCitationAnalysis(message = "", input = {}) {
+  if (input.task === "citations" || input.analyzeCitations) return true;
+  const lower = message.toLowerCase();
+  const phrases = [
+    "check my citations",
+    "check citations",
+    "citation consistency",
+    "citation gaps",
+    "unresolved citations",
+    "analyze citations",
+    "citation format"
+  ];
+  return phrases.some(phrase => lower.includes(phrase));
+}
+
+/**
+ * Determines whether a user message or input requests research on a claim
+ */
+function requiresResearchClaim(message = "", input = {}) {
+  if (input.task === "research_claim" || input.claim) return true;
+  const lower = message.toLowerCase();
+  const phrases = [
+    "research this claim",
+    "does this source actually support",
+    "does this source support",
+    "support my claim",
+    "find sources supporting",
+    "evidence behind this statement",
+    "why is this source relevant",
+    "compare a claim against multiple sources",
+    "compare this claim"
+  ];
+  return phrases.some(phrase => lower.includes(phrase));
+}
+
+/**
+ * Determines whether a user message or input requests a reference list
+ */
+function requiresReferenceList(message = "", input = {}) {
+  if (input.task === "reference_list" || input.references) return true;
+  const lower = message.toLowerCase();
+  const phrases = [
+    "create a reference list",
+    "reference list",
+    "create reference list",
+    "generate reference list",
+    "generate bibliography",
+    "make a reference list",
+    "references from verified sources"
+  ];
+  return phrases.some(phrase => lower.includes(phrase));
+}
+
+/**
  * Runs the Checkra AI Agent on a user inquiry and optional analysis context.
  *
  * @param {Object} input Request input containing { message, analysis, text, passage }
@@ -535,6 +610,87 @@ ${rw.warning ? `- Warning: "${rw.warning}"` : ""}
 "${rw.rewrittenText}"
 `;
       }
+    }
+  }
+
+  // G. If user requests claim extraction
+  if (requiresClaimExtraction(message, input) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const claimTargetText = text || passage || (analysis && (analysis.document?.text || analysis.text)) || message;
+    if (claimTargetText) {
+      const claimRes = executeTool("extract_claims", { text: claimTargetText });
+      if (claimRes.available && Array.isArray(claimRes.claims)) {
+        toolsUsed.push("extract_claims");
+        totalToolCalls++;
+        toolDataPromptSection += `
+[CHECKRA CLAIM EXTRACTION EVIDENCE (READ-ONLY)]
+- Total Claims Extracted: ${claimRes.stats?.totalClaims || 0}
+- Statements Requiring Evidence: ${claimRes.stats?.requiresEvidenceCount || 0}
+- Key Claims:
+${claimRes.claims.slice(0, 4).map(c => `  - [${c.type} (Requires Evidence: ${c.requiresEvidence})] "${c.text}" (${c.reason})`).join("\n") || "  (No research claims identified)"}
+`;
+      }
+    }
+  }
+
+  // H. If user requests citation analysis
+  if (requiresCitationAnalysis(message, input) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const citationTargetText = text || passage || (analysis && (analysis.document?.text || analysis.text)) || message;
+    if (citationTargetText) {
+      const citeRes = executeTool("analyze_citations", { text: citationTargetText });
+      if (citeRes.available) {
+        toolsUsed.push("analyze_citations");
+        totalToolCalls++;
+        toolDataPromptSection += `
+[CHECKRA CITATION AUDIT EVIDENCE (READ-ONLY)]
+- Total Citations Found: ${citeRes.stats?.totalCitations || 0} (Recognized: ${citeRes.stats?.recognized || 0}, Unrecognized: ${citeRes.stats?.unrecognized || 0})
+- Possible Citation Gaps: ${citeRes.stats?.possibleGaps || 0}
+- Citation Gaps:
+${citeRes.citationGaps?.slice(0, 3).map(g => `  - [${g.claimType}] "${g.claimText}" -> ${g.recommendation}`).join("\n") || "  (No citation gaps detected)"}
+`;
+      }
+    }
+  }
+
+  // I. If user requests research on a specific claim
+  if (requiresResearchClaim(message, input) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const targetClaim = input.claim || text || passage || message;
+    if (targetClaim) {
+      const researchRes = await executeTool("research_claim", {
+        claim: targetClaim,
+        context: input.context || "",
+        options: input.options || {}
+      });
+      if (researchRes.available) {
+        toolsUsed.push("research_claim");
+        totalToolCalls++;
+        toolDataPromptSection += `
+[CHECKRA CLAIM RESEARCH EVIDENCE (READ-ONLY)]
+- Claim: "${researchRes.claim}"
+- Evidence Status: ${researchRes.status}
+- Summary: ${researchRes.summary}
+- Sources Evaluated: ${researchRes.sources?.length || 0}
+${researchRes.sources?.slice(0, 2).map(s => `  - [${s.sourceType} - ${s.supportType}] "${s.title}" (${s.url})\n    Evidence: ${s.evidence}\n    Explanation: ${s.explanation}`).join("\n") || "  (No sources evaluated)"}
+`;
+      }
+    }
+  }
+
+  // J. If user requests reference list generation
+  if (requiresReferenceList(message, input) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const sourcesToFormat = input.sources || input.verifiedSources || (analysis?.sources?.items) || [];
+    const refRes = executeTool("generate_reference_list", {
+      sources: sourcesToFormat,
+      style: input.style || "APA"
+    });
+    if (refRes.available) {
+      toolsUsed.push("generate_reference_list");
+      totalToolCalls++;
+      toolDataPromptSection += `
+[CHECKRA REFERENCE LIST (READ-ONLY)]
+- Style: ${refRes.style}
+- Total References: ${refRes.totalReferences}
+${refRes.references?.slice(0, 3).map(r => `  - ${r.formattedReference}`).join("\n") || "  (No verified source references to format)"}
+`;
     }
   }
 

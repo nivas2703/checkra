@@ -25,6 +25,9 @@ const { detectAiWriting } = require("./ai/aiWritingDetector");
 const { generateIntegrityReport } = require("./ai/evidenceFusion");
 const { analyzeWritingQuality } = require("./ai/writingImprovement");
 const { rewriteText: aiRewriteText } = require("./ai/rewriteEngine");
+const { extractClaims } = require("./ai/claimExtractor");
+const { analyzeCitations, generateReferenceList } = require("./ai/citationAnalyzer");
+const { researchClaim, researchDocument } = require("./ai/researchAssistant");
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
@@ -355,6 +358,102 @@ app.post("/api/writing/rewrite", async (req, res) => {
       ok: false,
       error: "REWRITE_EXECUTION_ERROR",
       message: "An error occurred while executing the rewrite."
+    });
+  }
+});
+
+// POST /api/research/claims — Full document claim extraction, citation gap auditing, and research overview
+app.post("/api/research/claims", async (req, res) => {
+  try {
+    const { text, options } = req.body || {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty text string is required for research claim extraction."
+      });
+    }
+
+    const report = await researchDocument(text, options || {});
+    return res.json(report);
+  } catch (err) {
+    logger.error("Research claims endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "RESEARCH_CLAIMS_ERROR",
+      message: "An error occurred while extracting research claims."
+    });
+  }
+});
+
+// POST /api/research/claim — Bounded evidence-first research for a single claim
+app.post("/api/research/claim", async (req, res) => {
+  try {
+    const { claim, context, options } = req.body || {};
+    if (!claim || typeof claim !== "string" || !claim.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty claim string is required for research."
+      });
+    }
+
+    const researchResult = await researchClaim(claim, context || "", options || {});
+    return res.json(researchResult);
+  } catch (err) {
+    logger.error("Research claim endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "CLAIM_RESEARCH_ERROR",
+      message: "An error occurred while researching the claim."
+    });
+  }
+});
+
+// POST /api/citations/analyze — Detection of citation forms, gaps, and citation statistics
+app.post("/api/citations/analyze", async (req, res) => {
+  try {
+    const { text, options } = req.body || {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty text string is required for citation analysis."
+      });
+    }
+
+    const citationResult = analyzeCitations(text, options || {});
+    return res.json(citationResult);
+  } catch (err) {
+    logger.error("Citations analyze endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "CITATION_ANALYSIS_ERROR",
+      message: "An error occurred while analyzing citations."
+    });
+  }
+});
+
+// POST /api/citations/reference-list — Generates reference list from verified sources
+app.post("/api/citations/reference-list", async (req, res) => {
+  try {
+    const { sources, style } = req.body || {};
+    if (!Array.isArray(sources)) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "An array of verified sources is required to generate a reference list."
+      });
+    }
+
+    const referenceResult = generateReferenceList(sources, style || "APA");
+    return res.json(referenceResult);
+  } catch (err) {
+    logger.error("Reference list endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "REFERENCE_LIST_ERROR",
+      message: "An error occurred while generating the reference list."
     });
   }
 });

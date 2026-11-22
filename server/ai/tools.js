@@ -14,6 +14,9 @@ const { detectAiWriting } = require("./aiWritingDetector");
 const { generateIntegrityReport } = require("./evidenceFusion");
 const { analyzeWritingQuality } = require("./writingImprovement");
 const { rewriteText } = require("./rewriteEngine");
+const { extractClaims } = require("./claimExtractor");
+const { analyzeCitations, generateReferenceList } = require("./citationAnalyzer");
+const { researchClaim } = require("./researchAssistant");
 
 const TOOLS = {
   get_analysis_result: {
@@ -192,6 +195,71 @@ const TOOLS = {
       return {
         available: res.ok,
         rewrite: res
+      };
+    }
+  },
+
+  extract_claims: {
+    name: "extract_claims",
+    description: "Extracts research-relevant claims (factual, statistical, historical, causal, comparative, definitional) and identifies statements requiring empirical evidence.",
+    execute: (context = {}) => {
+      const text = context.text || context.passage || context.documentText || "";
+      const res = extractClaims(text, context.options || {});
+      return {
+        available: res.ok,
+        claims: res.claims || [],
+        stats: res.stats || {}
+      };
+    }
+  },
+
+  analyze_citations: {
+    name: "analyze_citations",
+    description: "Detects parenthetical, narrative, numeric, and multiple citations, identifies citation gaps across claims, and reports citation statistics.",
+    execute: (context = {}) => {
+      const text = context.text || context.passage || context.documentText || "";
+      const res = analyzeCitations(text, context.options || {});
+      return {
+        available: res.ok,
+        citations: res.citations || [],
+        citationGaps: res.citationGaps || [],
+        claims: res.claims || [],
+        stats: res.stats || {}
+      };
+    }
+  },
+
+  research_claim: {
+    name: "research_claim",
+    description: "Performs bounded, evidence-first research on a specific factual claim, evaluating candidate sources for direct support, partial support, topical relation, or contradiction.",
+    execute: async (context = {}) => {
+      const claim = context.claim || context.text || context.passage || "";
+      const ctx = context.context || "";
+      const res = await researchClaim(claim, ctx, context.options || {});
+      return {
+        available: res.ok,
+        claim: res.claim,
+        status: res.status,
+        sources: res.sources || [],
+        evidence: res.evidence || [],
+        summary: res.summary,
+        limitations: res.limitations || []
+      };
+    }
+  },
+
+  generate_reference_list: {
+    name: "generate_reference_list",
+    description: "Generates a structured bibliography reference list strictly from verified/retrieved source metadata. Never fabricates citations or entries.",
+    execute: (context = {}) => {
+      const sources = context.sources || context.verifiedSources || [];
+      const style = context.style || "APA";
+      const res = generateReferenceList(sources, style);
+      return {
+        available: res.ok,
+        style: res.style,
+        references: res.references || [],
+        totalReferences: res.totalReferences || 0
       };
     }
   }
