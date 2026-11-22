@@ -74,8 +74,8 @@ function classifyAiWriting(features, options = {}) {
   limitations.push(MANDATORY_DISCLAIMER);
 
   // 3. STATISTICAL FEATURE SCORING (Deterministic)
-  // Baseline neutral likelihood: 25
-  let rawScore = 25;
+  // Baseline neutral likelihood: 20 (calibrated to prevent unearned priors)
+  let rawScore = 20;
   const signals = [];
 
   const cv = features.sentenceLengthCV;
@@ -84,17 +84,18 @@ function classifyAiWriting(features, options = {}) {
   const leadRep = features.leadRepetitionRatio;
   const paragraphCV = features.paragraphCV;
   const pCount = features.paragraphCount;
+  const ttr = features.typeTokenRatio;
 
   // Feature A: Sentence length CV (Low CV = uniform sentence lengths characteristic of LLMs)
   if (cv < 0.20) {
-    rawScore += 30;
+    rawScore += 24;
     signals.push("HIGH_UNIFORMITY");
     signals.push("LOW_SENTENCE_VARIATION");
   } else if (cv < 0.28) {
-    rawScore += 22;
+    rawScore += 16;
     signals.push("LOW_SENTENCE_VARIATION");
   } else if (cv < 0.35) {
-    rawScore += 12;
+    rawScore += 8;
   } else if (cv >= 0.50) {
     rawScore -= 18;
     signals.push("HIGH_VARIATION");
@@ -102,50 +103,61 @@ function classifyAiWriting(features, options = {}) {
     rawScore -= 10;
   }
 
-  // Feature B: Consecutive sentence rhythm / burstiness delta
+  // Feature B: Consecutive sentence rhythm / burstiness delta (scaled to avoid double-counting with CV)
   if (burstiness < 0.22) {
-    rawScore += 18;
+    rawScore += 10;
     if (!signals.includes("HIGH_UNIFORMITY")) signals.push("HIGH_UNIFORMITY");
   } else if (burstiness < 0.32) {
-    rawScore += 10;
+    rawScore += 5;
   } else if (burstiness >= 0.45) {
-    rawScore -= 15;
+    rawScore -= 14;
     signals.push("NATURAL_BURSTINESS");
   }
 
   // Feature C: Rhetorical transition density (e.g. "Furthermore", "Moreover", "In conclusion")
   if (transDensity >= 3.0) {
-    rawScore += 24;
+    rawScore += 26;
     signals.push("HIGH_TRANSITION_DENSITY");
   } else if (transDensity >= 1.8) {
-    rawScore += 16;
+    rawScore += 18;
     signals.push("HIGH_TRANSITION_DENSITY");
   } else if (transDensity >= 1.0) {
     rawScore += 8;
   } else if (transDensity === 0) {
+    rawScore -= 14; // Stronger dampener for complete absence of LLM transition signposts
+  } else if (transDensity < 0.8) {
     rawScore -= 6;
   }
 
-  // Feature D: Repetitive sentence lead structures
-  if (leadRep >= 0.28) {
-    rawScore += 14;
-    signals.push("HIGH_STRUCTURAL_REGULARITY");
-  } else if (leadRep >= 0.18) {
-    rawScore += 7;
+  // Feature D: Compound Evidence Interaction
+  // Low CV combined with elevated transition density is the quintessential LLM signature
+  if (cv < 0.25 && transDensity >= 2.0) {
+    rawScore += 12; // Compound alignment bonus
   }
 
-  // Feature E: Paragraph uniformity (when multi-paragraph text is provided)
+  // Feature E: Repetitive sentence lead structures
+  if (leadRep >= 0.28) {
+    rawScore += 12;
+    signals.push("HIGH_STRUCTURAL_REGULARITY");
+  } else if (leadRep >= 0.18) {
+    rawScore += 6;
+  }
+
+  // Feature F: Paragraph uniformity (when multi-paragraph text is provided)
   if (pCount >= 2) {
     if (paragraphCV < 0.22) {
-      rawScore += 10;
+      rawScore += 8;
       if (!signals.includes("HIGH_UNIFORMITY")) signals.push("HIGH_UNIFORMITY");
     } else if (paragraphCV > 0.55) {
-      rawScore -= 10;
+      rawScore -= 8;
     }
   }
 
-  // Feature F: Lexical variation
-  if (features.typeTokenRatio < 0.48 && wordCount > 100) {
+  // Feature G: Lexical diversity moderation
+  if (ttr >= 0.60 && wordCount >= 60) {
+    rawScore -= 10; // Rich vocabulary moderates false positives in human professional/academic writing
+  } else if (ttr < 0.45 && wordCount > 100) {
+    rawScore += 6;
     signals.push("LOW_LEXICAL_VARIATION");
   }
 

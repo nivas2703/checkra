@@ -118,7 +118,7 @@ async function requestJson(path, method = "GET", body = null) {
     const headers = { "Content-Type": "application/json" };
     const req = http.request(
       url,
-      { method, headers, timeout: 60000 },
+      { method, headers, timeout: 120000 },
       (res) => {
         let raw = "";
         res.on("data", chunk => (raw += chunk));
