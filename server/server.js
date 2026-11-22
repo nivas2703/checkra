@@ -28,6 +28,17 @@ const { rewriteText: aiRewriteText } = require("./ai/rewriteEngine");
 const { extractClaims } = require("./ai/claimExtractor");
 const { analyzeCitations, generateReferenceList } = require("./ai/citationAnalyzer");
 const { researchClaim, researchDocument } = require("./ai/researchAssistant");
+const {
+  createWorkspace,
+  getWorkspace,
+  analyzeWorkspace,
+  getPassageContext,
+  stageRewrite,
+  applyRewrite,
+  recheckWorkspace,
+  generateWorkspaceReports,
+  exportWorkspace
+} = require("./workspace/documentWorkspace");
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
@@ -454,6 +465,260 @@ app.post("/api/citations/reference-list", async (req, res) => {
       ok: false,
       error: "REFERENCE_LIST_ERROR",
       message: "An error occurred while generating the reference list."
+    });
+  }
+});
+
+// ==========================================
+// CHECKRA ACADEMIC WORKSPACE ENDPOINTS (Phase 8)
+// ==========================================
+
+// POST /api/workspace/create — Initializes an in-memory document workspace
+app.post("/api/workspace/create", (req, res) => {
+  try {
+    const { text, title, fileName, fileType } = req.body || {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "A non-empty text string is required to initialize a workspace."
+      });
+    }
+
+    const wsResult = createWorkspace({ text, title, fileName, fileType });
+    if (!wsResult.ok) {
+      return res.status(400).json(wsResult);
+    }
+    return res.status(201).json(wsResult);
+  } catch (err) {
+    logger.error("Create workspace endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WORKSPACE_CREATE_ERROR",
+      message: "An error occurred while creating the workspace."
+    });
+  }
+});
+
+// GET /api/workspace/:id — Retrieves current workspace state
+app.get("/api/workspace/:id", (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+    return res.json({ ok: true, workspace: ws });
+  } catch (err) {
+    logger.error("Get workspace endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WORKSPACE_GET_ERROR",
+      message: "An error occurred while retrieving the workspace."
+    });
+  }
+});
+
+// POST /api/workspace/:id/analyze — Executes staged multi-level analysis on active workspace
+app.post("/api/workspace/:id/analyze", async (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+
+    const analyzeResult = await analyzeWorkspace(req.params.id, req.body || {});
+    if (!analyzeResult.ok) {
+      return res.status(400).json(analyzeResult);
+    }
+    return res.json(analyzeResult);
+  } catch (err) {
+    logger.error("Analyze workspace endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WORKSPACE_ANALYZE_ERROR",
+      message: "An error occurred while analyzing the workspace."
+    });
+  }
+});
+
+// POST /api/workspace/:id/passage-context — Retrieves all diagnostic context for a selected passage
+app.post("/api/workspace/:id/passage-context", (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+
+    const { passage, start, end } = req.body || {};
+    const passResult = getPassageContext(req.params.id, { passage, start, end });
+    if (!passResult.ok) {
+      return res.status(400).json(passResult);
+    }
+    return res.json(passResult);
+  } catch (err) {
+    logger.error("Passage context endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "PASSAGE_CONTEXT_ERROR",
+      message: "An error occurred while retrieving passage context."
+    });
+  }
+});
+
+// POST /api/workspace/:id/rewrite — Stages an evidence-aware rewrite for a selected passage
+app.post("/api/workspace/:id/rewrite", async (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+
+    const { passage, mode, options } = req.body || {};
+    const stageResult = await stageRewrite(req.params.id, { passage, mode, options });
+    if (!stageResult.ok) {
+      return res.status(400).json(stageResult);
+    }
+    return res.json(stageResult);
+  } catch (err) {
+    logger.error("Stage rewrite endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "REWRITE_STAGE_ERROR",
+      message: "An error occurred while staging the rewrite."
+    });
+  }
+});
+
+// POST /api/workspace/:id/apply-rewrite — Explicitly replaces passage in working document and versions it
+app.post("/api/workspace/:id/apply-rewrite", (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+
+    const { originalPassage, newText } = req.body || {};
+    const applyResult = applyRewrite(req.params.id, { originalPassage, newText });
+    if (!applyResult.ok) {
+      return res.status(400).json(applyResult);
+    }
+    return res.json(applyResult);
+  } catch (err) {
+    logger.error("Apply rewrite endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "APPLY_REWRITE_ERROR",
+      message: "An error occurred while applying the rewrite."
+    });
+  }
+});
+
+// POST /api/workspace/:id/recheck — Re-runs analysis on updated version and produces change impact
+app.post("/api/workspace/:id/recheck", async (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+
+    const recheckResult = await recheckWorkspace(req.params.id, req.body || {});
+    if (!recheckResult.ok) {
+      return res.status(400).json(recheckResult);
+    }
+    return res.json(recheckResult);
+  } catch (err) {
+    logger.error("Recheck workspace endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "RECHECK_ERROR",
+      message: "An error occurred while rechecking the workspace."
+    });
+  }
+});
+
+// GET /api/workspace/:id/reports — Retrieves the 5 workspace reports
+app.get("/api/workspace/:id/reports", (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+
+    const reportsResult = generateWorkspaceReports(req.params.id);
+    return res.json(reportsResult);
+  } catch (err) {
+    logger.error("Workspace reports endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WORKSPACE_REPORTS_ERROR",
+      message: "An error occurred while retrieving workspace reports."
+    });
+  }
+});
+
+// GET /api/workspace/:id/export — Exports document and findings in JSON, Markdown, or HTML
+app.get("/api/workspace/:id/export", (req, res) => {
+  try {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+
+    const format = req.query.format || "json";
+    const exportResult = exportWorkspace(req.params.id, format);
+    if (!exportResult.ok) {
+      return res.status(400).json(exportResult);
+    }
+
+    if (exportResult.format === "html") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(exportResult.data);
+    }
+
+    if (exportResult.format === "markdown") {
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      return res.send(exportResult.data);
+    }
+
+    return res.json(exportResult);
+  } catch (err) {
+    logger.error("Workspace export endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WORKSPACE_EXPORT_ERROR",
+      message: "An error occurred while exporting the workspace."
     });
   }
 });

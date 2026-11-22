@@ -17,6 +17,7 @@ const { rewriteText } = require("./rewriteEngine");
 const { extractClaims } = require("./claimExtractor");
 const { analyzeCitations, generateReferenceList } = require("./citationAnalyzer");
 const { researchClaim } = require("./researchAssistant");
+const { getWorkspace, getPassageContext } = require("../workspace/documentWorkspace");
 
 const TOOLS = {
   get_analysis_result: {
@@ -260,6 +261,47 @@ const TOOLS = {
         style: res.style,
         references: res.references || [],
         totalReferences: res.totalReferences || 0
+      };
+    }
+  },
+
+  get_workspace_context: {
+    name: "get_workspace_context",
+    description: "Retrieves context-aware workspace state including document metadata, selected passage findings, similarity scores, AI writing likelihood, claims, and citation gaps.",
+    execute: (context = {}) => {
+      const wsId = context.workspaceId || context.workspace?.id;
+      if (!wsId && !context.workspace) {
+        return {
+          available: false,
+          error: "NO_WORKSPACE_PROVIDED",
+          message: "No workspace ID or workspace object provided."
+        };
+      }
+      const ws = context.workspace || getWorkspace(wsId);
+      if (!ws) {
+        return {
+          available: false,
+          error: "WORKSPACE_NOT_FOUND",
+          message: `Workspace '${wsId}' was not found.`
+        };
+      }
+      return {
+        available: true,
+        workspaceId: ws.id,
+        documentTitle: ws.document.title,
+        wordCount: ws.document.wordCount,
+        sectionsCount: ws.content.sections?.length || 0,
+        similarityScore: ws.analysis.similarity?.score ?? null,
+        exactCoverage: ws.analysis.similarity?.coverage?.exactPercent ?? 0,
+        aiWritingLikelihood: ws.analysis.aiWriting?.likelihood ?? null,
+        integrityConfidence: ws.analysis.integrityReport?.integrityConfidence?.level ?? "N/A",
+        confidenceScore: ws.analysis.integrityReport?.integrityConfidence?.score ?? null,
+        writingQualityScore: ws.writing.quality?.qualityScore ?? null,
+        totalClaims: ws.research.claims?.length || 0,
+        unsupportedClaims: ws.research.claims?.filter(c => c.citationStatus === "CITATION_MISSING").length || 0,
+        citationsCount: ws.research.citations?.length || 0,
+        versionsCount: ws.versions?.length || 1,
+        selectedPassageContext: context.passage ? getPassageContext(ws.id, { passage: context.passage }) : null
       };
     }
   }

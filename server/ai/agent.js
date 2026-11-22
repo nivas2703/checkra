@@ -428,6 +428,31 @@ async function runCheckraAgent(input = {}) {
   let toolDataPromptSection = "";
   let analysisToolResult = null;
 
+  // 0. If workspace context is provided, invoke get_workspace_context tool
+  if ((input.workspace || input.workspaceId) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const wsRes = executeTool("get_workspace_context", {
+      workspace: input.workspace,
+      workspaceId: input.workspaceId,
+      passage: input.passage || input.selectedPassage
+    });
+    if (wsRes.available) {
+      toolsUsed.push("get_workspace_context");
+      totalToolCalls++;
+      toolDataPromptSection += `
+[CHECKRA ACADEMIC WORKSPACE CONTEXT (READ-ONLY)]
+- Document: "${wsRes.documentTitle}" (${wsRes.wordCount} words, ${wsRes.sectionsCount} sections)
+- Active Version: v${wsRes.versionsCount}
+- Overall Similarity: ${wsRes.similarityScore !== null ? wsRes.similarityScore + "%" : "UNAVAILABLE"}
+- AI-Writing Likelihood: ${wsRes.aiWritingLikelihood !== null ? wsRes.aiWritingLikelihood + "%" : "UNAVAILABLE"}
+- Integrity Confidence: ${wsRes.integrityConfidence} (${wsRes.confidenceScore !== null ? wsRes.confidenceScore + "/100" : "N/A"})
+- Writing Quality Score: ${wsRes.writingQualityScore !== null ? wsRes.writingQualityScore + "/100" : "UNAVAILABLE"}
+- Citation Status: ${wsRes.citationsCount} citations detected, ${wsRes.unsupportedClaims} claims requiring evidence
+${wsRes.selectedPassageContext ? `- Selected Passage Context: "${wsRes.selectedPassageContext.passage}" (Integrity Matches: ${wsRes.selectedPassageContext.integrityEvidence?.matches?.length || 0}, Writing Issues: ${wsRes.selectedPassageContext.writingIssues?.count || 0})` : ""}
+CRITICAL INSTRUCTION: Base your reasoning strictly on this loaded workspace evidence. If requested information is absent from this workspace, state clearly that the information is unavailable.
+`;
+    }
+  }
+
   // A. If analysis is provided, invoke get_analysis_result tool
   if (analysis && typeof analysis === "object" && totalToolCalls < MAX_TOTAL_TOOLS) {
     analysisToolResult = executeTool("get_analysis_result", { analysis });
