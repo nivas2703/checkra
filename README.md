@@ -2,7 +2,7 @@
 
 **AI-Powered Writing & Integrity Checker**
 
-> **Check. Verify. Improve.** — **A [NIVORA](https://nivora-niva.vercel.app/) Product**
+> **Check. Verify. Improve.** — **A [NIVORA](https://nivora.web.app/) Product**
 
 Checkra is a comprehensive, evidence-grounded writing analysis and verification platform within the NIVORA technology ecosystem. It evaluates document similarity against live web sources, validates linguistic quality, provides AI-powered evidence assessment and text rewriting, and generates tamper-verifiable integrity reports—all with zero permanent document storage.
 

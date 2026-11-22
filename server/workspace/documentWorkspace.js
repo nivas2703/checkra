@@ -841,7 +841,7 @@ function exportWorkspace(workspaceId, format = "json") {
   </div>
   <div class="content">${ws.content.currentText}</div>
   <div class="footer">
-    <p>Checkra Academic Workspace Report • <a href="https://nivora-niva.vercel.app/" target="_blank" style="color: #7c3aed; text-decoration: none;">A NIVORA Product</a></p>
+    <p>Checkra Academic Workspace Report • <a href="https://nivora.web.app/" target="_blank" style="color: #7c3aed; text-decoration: none;">A NIVORA Product</a></p>
     <p>Disclaimer: Checkra provides deterministic similarity analysis, probabilistic stylometric AI-writing likelihood indicators, and evidence verification.</p>
   </div>
 </body>

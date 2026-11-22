@@ -1159,7 +1159,7 @@ app.get("/verify/:id", (req, res) => {
           <h2>Verification Seal Expired or Not Found</h2>
           <p style="color:#a1a1aa; line-height:1.6;">Analysis ID <strong>${escapeHtml(req.params.id)}</strong> was either in a previous session or has expired. In accordance with Checkra privacy guidelines, analysis results are held in session memory only.</p>
           <div style="margin-top:20px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
-            <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" style="color:#a1a1aa; text-decoration:none; font-size:11px; display:inline-flex; align-items:center; gap:6px;">
+            <a href="https://nivora.web.app/" target="_blank" rel="noopener noreferrer" style="color:#a1a1aa; text-decoration:none; font-size:11px; display:inline-flex; align-items:center; gap:6px;">
               <img src="/nivora-logo.png" style="height:14px; width:auto;" alt="NIVORA">
               <span>Checkra — A NIVORA Product</span>
             </a>
@@ -1222,7 +1222,7 @@ app.get("/verify/:id", (req, res) => {
     </div>
 
     <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: center;">
-      <a href="https://nivora-niva.vercel.app/" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); text-decoration: none; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+      <a href="https://nivora.web.app/" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); text-decoration: none; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
         <img src="/nivora-logo.png" alt="NIVORA" style="height: 14px; width: auto; object-fit: contain;">
         <span>Checkra — A NIVORA Product</span>
       </a>

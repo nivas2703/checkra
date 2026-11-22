@@ -135,7 +135,7 @@ function generatePrintableHtml(data, qrDataUrl) {
   <div class="header">
     <div>
       <div class="logo">Check<span>ra</span></div>
-      <div class="tagline">Check • Verify • Improve • <a href="https://nivora-niva.vercel.app/" target="_blank" style="color:#7c3aed; text-decoration:none;">A NIVORA Product</a></div>
+      <div class="tagline">Check • Verify • Improve • <a href="https://nivora.web.app/" target="_blank" style="color:#7c3aed; text-decoration:none;">A NIVORA Product</a></div>
     </div>
     <div style="text-align:right">
       <div style="font-weight:800; font-size:10pt; color:#18181b;">WRITING INTEGRITY REPORT</div>
@@ -177,7 +177,7 @@ function generatePrintableHtml(data, qrDataUrl) {
   </div>
 
   <div class="footer">
-    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora-niva.vercel.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
+    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora.web.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
     <span>Page 1</span>
   </div>
 </div>
@@ -217,7 +217,7 @@ function generatePrintableHtml(data, qrDataUrl) {
   <p style="font-size:9.5pt; color:#3f3f46; line-height:1.6;">${escapeHtml(sim.methodology || "Overall similarity is deterministically calculated as (Exact Coverage × 0.65) + (Near Coverage × 0.25) + (Semantic Coverage × 0.10). Score is derived strictly from verified source text matches.")}</p>
 
   <div class="footer">
-    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora-niva.vercel.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
+    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora.web.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
     <span>Page 2</span>
   </div>
 </div>
@@ -285,7 +285,7 @@ function generatePrintableHtml(data, qrDataUrl) {
   ` : ""}
 
   <div class="footer">
-    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora-niva.vercel.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
+    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora.web.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
     <span>Page 3</span>
   </div>
 </div>
@@ -327,7 +327,7 @@ function generatePrintableHtml(data, qrDataUrl) {
   </div>
 
   <div class="footer">
-    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora-niva.vercel.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
+    <span>Checkra Evidence-Based Integrity Platform • <a href="https://nivora.web.app/" target="_blank" style="color:#71717a; text-decoration:none;">A NIVORA Product</a></span>
     <span>End of Report</span>
   </div>
 </div>

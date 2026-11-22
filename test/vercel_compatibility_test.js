@@ -227,7 +227,7 @@ async function runVercelCompatibilityTests() {
     );
     report(
       "Verification Page NIVORA Branding",
-      verifyRes.body.includes("A NIVORA Product") && verifyRes.body.includes("https://nivora-niva.vercel.app/"),
+      verifyRes.body.includes("A NIVORA Product") && verifyRes.body.includes("https://nivora.web.app/"),
       "Contains authentic NIVORA parent ecosystem branding"
     );
 
