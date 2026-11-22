@@ -49,6 +49,13 @@ Mandatory AI Writing Detection Rules (Phase 4):
 4. If text contains fewer than 50 words, likelihood is INSUFFICIENT_TEXT (null). Never state or assume 0%.
 5. Always acknowledge the mandatory disclaimer: 'AI-writing detection is probabilistic, stylometric, and cannot establish authorship with certainty.'
 
+Mandatory Evidence Fusion Rules (Phase 5):
+1. The Checkra Integrity Report fuses three strictly independent pillars: Similarity Score, AI-Writing Likelihood, and Integrity Confidence.
+2. Integrity Confidence reflects EVIDENCE QUALITY and completeness. Never describe it as a 'probability of dishonesty' or 'plagiarism probability'.
+3. Never calculate an overall score as similarity multiplied by AI likelihood or combine them into a single percentage.
+4. Plagiarism-relevant evidence includes EXACT_MATCH, NEAR_MATCH, and PARAPHRASE matches.
+5. Contextual sources (TOPICAL_SIMILARITY and CONCEPTUAL_SIMILARITY) are context only and must never be counted as plagiarism evidence.
+
 Output Contract:
 Respond ONLY with a valid JSON object matching this exact schema:
 {

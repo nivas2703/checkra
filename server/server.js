@@ -22,6 +22,7 @@ const { isGeminiConfigured, getGeminiModel, testGeminiConnection, testGeminiGrou
 const { checkAiHealth, generateAiCompletion } = require("./ai/model");
 const { runCheckraAgent, runCheckraResearch } = require("./ai/agent");
 const { detectAiWriting } = require("./ai/aiWritingDetector");
+const { generateIntegrityReport } = require("./ai/evidenceFusion");
 const { escapeHtml } = require("./utils/security");
 
 const app = express();
@@ -213,6 +214,79 @@ app.post("/api/ai-writing/analyze", async (req, res) => {
       ok: false,
       error: "AI_WRITING_ANALYSIS_ERROR",
       message: "An error occurred during AI writing detection."
+    });
+  }
+});
+
+// POST /api/integrity-report — Unified evidence fusion & integrity report
+app.post("/api/integrity-report", async (req, res) => {
+  try {
+    const { analysisId, analysis, research, aiWriting, text, options } = req.body || {};
+
+    if (!analysisId && !analysis && !research && !aiWriting && !text) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_REQUEST",
+        message: "An analysis object, analysisId, research, or text is required."
+      });
+    }
+
+    if (analysisId && !analysis && !research && !aiWriting && !text) {
+      const sessionAnalysis = db.getSessionAnalysis(analysisId);
+      if (!sessionAnalysis) {
+        return res.status(404).json({
+          ok: false,
+          error: "ANALYSIS_NOT_FOUND",
+          message: `Analysis session '${analysisId}' was not found or has expired.`
+        });
+      }
+    }
+
+    let resolvedAnalysis = analysis;
+    let resolvedAiWriting = aiWriting;
+
+    if (text && !resolvedAnalysis) {
+      try {
+        const currentSettings = db.getSettings();
+        const mergedOptions = { ...currentSettings, ...options };
+        resolvedAnalysis = await executeAnalysis({
+          text,
+          title: req.body?.title || "Research Document",
+          filename: "document.txt",
+          fileStats: calculateTextStats(text, "document.txt"),
+          options: mergedOptions
+        });
+      } catch (err) {
+        logger.debug("Automatic text analysis fallback error", { error: err.message });
+      }
+    }
+
+    if (text && !resolvedAiWriting) {
+      try {
+        resolvedAiWriting = await detectAiWriting(text, { skipQualitative: true });
+      } catch (err) {
+        logger.debug("Automatic AI writing fallback error", { error: err.message });
+      }
+    }
+
+    const fusionResult = generateIntegrityReport({
+      analysisId,
+      analysis: resolvedAnalysis,
+      research,
+      aiWriting: resolvedAiWriting
+    });
+
+    if (!fusionResult.ok) {
+      return res.status(400).json(fusionResult);
+    }
+
+    return res.json(fusionResult);
+  } catch (err) {
+    logger.error("Integrity report endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "INTEGRITY_REPORT_ERROR",
+      message: "An error occurred while generating the unified integrity report."
     });
   }
 });

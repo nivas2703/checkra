@@ -11,6 +11,7 @@ const { web_search } = require("./webSearchTool");
 const { fetch_source } = require("./sourceTool");
 const { verify_source } = require("./sourceVerification");
 const { detectAiWriting } = require("./aiWritingDetector");
+const { generateIntegrityReport } = require("./evidenceFusion");
 
 const TOOLS = {
   get_analysis_result: {
@@ -139,6 +140,25 @@ const TOOLS = {
       return {
         available: true,
         aiWriting: result
+      };
+    }
+  },
+
+  generate_integrity_report: {
+    name: "generate_integrity_report",
+    description: "Generates a unified Checkra integrity report fusing deterministic similarity matching, verified web sources, and AI writing likelihood. Read-only; does not recalculate or modify underlying scores.",
+    execute: (context = {}) => {
+      const res = generateIntegrityReport(context);
+      if (!res.ok) {
+        return {
+          available: false,
+          error: res.error,
+          message: res.message
+        };
+      }
+      return {
+        available: true,
+        report: res.report
       };
     }
   }

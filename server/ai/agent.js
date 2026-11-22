@@ -252,6 +252,26 @@ function requiresAiWritingDetection(message = "", input = {}) {
 }
 
 /**
+ * Determines whether a user message or input requests a unified integrity report
+ * @param {string} message
+ * @param {Object} input
+ * @returns {boolean}
+ */
+function requiresIntegrityReport(message = "", input = {}) {
+  if (input.task === "integrity_report" || input.report) return true;
+  const lower = message.toLowerCase();
+  const phrases = [
+    "integrity report",
+    "unified report",
+    "full integrity report",
+    "comprehensive report",
+    "evidence report",
+    "overall integrity"
+  ];
+  return phrases.some(phrase => lower.includes(phrase));
+}
+
+/**
  * Runs the Checkra AI Agent on a user inquiry and optional analysis context.
  *
  * @param {Object} input Request input containing { message, analysis, text, passage }
@@ -393,6 +413,33 @@ CRITICAL INSTRUCTIONS:
 4. If likelihood is unavailable due to insufficient text (< 50 words), explain clearly that the text is too short (< 50 words) for reliable stylometric analysis.
 `;
       }
+    }
+  }
+
+  // D. If user requests a unified integrity report
+  if (requiresIntegrityReport(message, input) && totalToolCalls < MAX_TOTAL_TOOLS) {
+    const reportRes = executeTool("generate_integrity_report", {
+      analysis,
+      research: input.research,
+      aiWriting: input.aiWriting || analysis?.aiWriting
+    });
+    if (reportRes.available && reportRes.report) {
+      toolsUsed.push("generate_integrity_report");
+      totalToolCalls++;
+      const rep = reportRes.report;
+      toolDataPromptSection += `
+[CHECKRA UNIFIED INTEGRITY REPORT EVIDENCE (READ-ONLY)]
+- Overall Similarity Score: ${rep.similarity.score !== null ? rep.similarity.score + "% (Grade " + rep.similarity.grade + ")" : "UNAVAILABLE"}
+- AI-Writing Likelihood: ${rep.aiWriting.likelihood !== null ? rep.aiWriting.likelihood + "%" : "UNAVAILABLE"}
+- Integrity Confidence: ${rep.integrityConfidence.level} (${rep.integrityConfidence.score}/100)
+- Confidence Basis: ${rep.integrityConfidence.basis.join("; ")}
+- Confidence Limitations: ${rep.integrityConfidence.limitations.join("; ")}
+- Plagiarism-Relevant Evidence Count: ${rep.summary.plagiarismRelevantEvidenceCount}
+- Contextual Source Count: ${rep.summary.contextualSourceCount}
+CRITICAL INSTRUCTIONS:
+1. Preserve absolute separation between Similarity Score and AI-Writing Likelihood.
+2. Integrity Confidence represents evidence quality and completeness, NOT a probability of plagiarism or AI generation.
+`;
     }
   }
 
