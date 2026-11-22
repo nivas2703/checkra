@@ -38,7 +38,8 @@ const {
   applyRewrite,
   recheckWorkspace,
   generateWorkspaceReports,
-  exportWorkspace
+  exportWorkspace,
+  deleteWorkspace
 } = require("./workspace/documentWorkspace");
 const { escapeHtml } = require("./utils/security");
 
@@ -812,6 +813,31 @@ app.get("/api/workspace/:id/export", (req, res) => {
       ok: false,
       error: "WORKSPACE_EXPORT_ERROR",
       message: "An error occurred while exporting the workspace."
+    });
+  }
+});
+
+// DELETE /api/workspace/:id — Deletes workspace from in-memory and ephemeral cache
+app.delete("/api/workspace/:id", (req, res) => {
+  try {
+    const deleted = deleteWorkspace(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({
+        ok: false,
+        error: "WORKSPACE_NOT_FOUND",
+        message: `Workspace '${req.params.id}' was not found.`
+      });
+    }
+    return res.json({
+      ok: true,
+      message: `Workspace '${req.params.id}' deleted successfully.`
+    });
+  } catch (err) {
+    logger.error("Workspace delete endpoint error", { error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: "WORKSPACE_DELETE_ERROR",
+      message: "An error occurred while deleting the workspace."
     });
   }
 });
