@@ -949,7 +949,18 @@ app.post("/api/analyze", async (req, res) => {
 app.post("/api/analysis/:id/retry-ai-review", async (req, res) => {
   try {
     const analysisId = req.params.id;
-    const analysis = db.getSessionAnalysis(analysisId);
+    let analysis = db.getSessionAnalysis(analysisId);
+
+    // Stateless serverless resilience: restore from client payload if cold container has no session
+    if (!analysis && req.body && (Array.isArray(req.body.matchedPassages) || Array.isArray(req.body.passages))) {
+      analysis = {
+        id: analysisId,
+        matchedPassages: req.body.matchedPassages || req.body.passages || [],
+        ...req.body
+      };
+      db.setSessionAnalysis(analysis);
+    }
+
     if (!analysis) {
       return res.status(404).json({
         success: false,

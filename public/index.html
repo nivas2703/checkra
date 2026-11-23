@@ -2720,9 +2720,13 @@ const api = {
     return parseApiResponse(res);
   },
   async retryAiReview(id) {
+    const payload = (arguments.length > 1 && arguments[1]) ? arguments[1] : (state && state.currentAnalysis ? {
+      matchedPassages: state.currentAnalysis.matchedPassages || state.currentAnalysis.passages || []
+    } : {});
     const res = await fetch("/api/analysis/" + encodeURIComponent(id) + "/retry-ai-review", {
       method: "POST",
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
     return parseApiResponse(res);
   }
@@ -3339,7 +3343,10 @@ async function retryAiReview() {
   }
 
   try {
-    const result = await api.retryAiReview(analysisId);
+    const payload = state.currentAnalysis ? {
+      matchedPassages: state.currentAnalysis.matchedPassages || state.currentAnalysis.passages || []
+    } : {};
+    const result = await api.retryAiReview(analysisId, payload);
 
     // 1. Check if backend reported session expired
     if (result && result.error && result.error.code === "SESSION_EXPIRED") {
