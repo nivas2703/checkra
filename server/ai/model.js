@@ -18,8 +18,8 @@ const { GoogleGenAI } = require("@google/genai");
 const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "qwen3:1.7b";
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
-const FALLBACK_GEMINI_MODEL = "gemini-3.8-flash";
-const FALLBACK_GEMINI_MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-1.5-flash"];
+const FALLBACK_GEMINI_MODEL = "gemini-3.5-flash";
+const FALLBACK_GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest", "gemini-1.5-flash"];
 const DEFAULT_TIMEOUT_MS = 60000; // 60s timeout for local CPU generation / remote APIs
 
 function getAiConfig() {
