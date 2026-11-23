@@ -434,6 +434,7 @@ async function generateAiCompletion(prompt, options = {}) {
         userMessage = "Gemini API key lacks required permissions.";
       } else if (msg.includes("404") || msg.includes("not_found") || msg.includes("no longer available")) {
         const fallbacks = FALLBACK_GEMINI_MODELS.filter(f => f !== model);
+        let lastFbErr = "";
         for (const fbModel of fallbacks) {
           try {
             const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
@@ -454,11 +455,11 @@ async function generateAiCompletion(prompt, options = {}) {
               };
             }
           } catch (fbErr) {
-            // try next available fallback
+            lastFbErr = `${fbModel}: ${fbErr.message}`;
           }
         }
         error = "GEMINI_MODEL_NOT_FOUND";
-        userMessage = `Gemini call failed: ${err.message}`;
+        userMessage = `Gemini call failed: ${err.message}${lastFbErr ? ` (Fallback failure: ${lastFbErr})` : ""}`;
       } else if (msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota")) {
         error = "GEMINI_QUOTA_EXCEEDED";
         userMessage = "Gemini quota or rate limit exceeded.";
