@@ -335,12 +335,13 @@ Respond ONLY with valid JSON in this exact structure:
               fallback: true
             };
           } catch (fbErr) {
+            lastError = fbErr;
             logger.warn(`Fallback model ${fbModel} review error: ${fbErr.message}`);
           }
         }
       }
 
-      const errorInfo = classifyGeminiError(err);
+      const errorInfo = classifyGeminiError(lastError || err);
 
       // Log detailed error on server only — never expose raw JSON to user
       logger.warn(`Gemini evidence review attempt ${attempt} failed`, {
