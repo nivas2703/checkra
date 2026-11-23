@@ -201,37 +201,31 @@ async function checkAiHealth(overrideConfig = {}) {
         error = "GEMINI_PERMISSION_DENIED";
         userMessage = "Gemini API key lacks required permissions.";
       } else if (msg.includes("404") || msg.includes("not_found")) {
-        // Fallback test
-        let fallbackErrMessage = null;
-        if (model !== FALLBACK_GEMINI_MODEL) {
-          try {
-            const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
-            const fbRes = await Promise.race([
-              aiFallback.models.generateContent({
-                model: FALLBACK_GEMINI_MODEL,
-                contents: "Respond with the single word: OK"
-              }),
-              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 6000))
-            ]);
-            if (fbRes && fbRes.text) {
-              return {
-                ok: true,
-                provider: "gemini",
-                model: FALLBACK_GEMINI_MODEL,
-                configured: true,
-                available: true,
-                fallback: true
-              };
-            }
-          } catch (fbErr) {
-            fallbackErrMessage = fbErr.message;
+        let availableModelNames = [];
+        try {
+          const listClient = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
+          const listRes = await listClient.models.list();
+          if (Array.isArray(listRes)) {
+            availableModelNames = listRes.map(m => m.name || m.model || m.displayName);
+          } else if (listRes && typeof listRes === "object") {
+            const arr = listRes.models || listRes.page || [];
+            availableModelNames = arr.map(m => m.name || m.model || m.displayName);
           }
+        } catch (listErr) {
+          // ignore
         }
         error = "GEMINI_MODEL_NOT_FOUND";
         userMessage = `Configured Gemini model '${model}' was not found.`;
-        if (fallbackErrMessage) {
-          userMessage += ` (Fallback '${FALLBACK_GEMINI_MODEL}' error: ${fallbackErrMessage})`;
-        }
+        return {
+          ok: false,
+          provider: "gemini",
+          model,
+          configured: true,
+          available: false,
+          error,
+          message: userMessage,
+          availableModels: availableModelNames
+        };
       } else if (msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota")) {
         error = "GEMINI_QUOTA_EXCEEDED";
         userMessage = "Gemini quota or rate limit exceeded.";
