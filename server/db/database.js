@@ -80,11 +80,29 @@ class SessionStore {
       this.activeSessions.delete(oldestKey);
     }
     this.activeSessions.set(analysis.id, analysis);
+    try {
+      const sessionCacheDir = path.join("/tmp", "checkra-sessions");
+      if (!fs.existsSync(sessionCacheDir)) fs.mkdirSync(sessionCacheDir, { recursive: true });
+      fs.writeFileSync(path.join(sessionCacheDir, `${analysis.id}.json`), JSON.stringify(analysis), "utf8");
+    } catch (_) {}
     return analysis;
   }
 
   getSessionAnalysis(id) {
-    return this.activeSessions.get(id) || null;
+    let session = this.activeSessions.get(id) || null;
+    if (!session) {
+      try {
+        const filePath = path.join("/tmp", "checkra-sessions", `${id}.json`);
+        if (fs.existsSync(filePath)) {
+          const raw = fs.readFileSync(filePath, "utf8");
+          session = JSON.parse(raw);
+          if (session && session.id) {
+            this.activeSessions.set(session.id, session);
+          }
+        }
+      } catch (_) {}
+    }
+    return session;
   }
 }
 
