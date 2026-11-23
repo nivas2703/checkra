@@ -167,20 +167,23 @@ app.get("/api/health", async (req, res) => {
   });
 });
 
-// GET /api/ai/health — Diagnostic health of local Ollama / AI Provider
+// GET /api/ai/health — Diagnostic health of active AI Provider (Ollama locally or Gemini in production)
 app.get("/api/ai/health", async (req, res) => {
   try {
     const health = await checkAiHealth();
     res.json(health);
   } catch (err) {
     logger.error("AI health check endpoint error", { error: err.message });
+    const { getAiConfig } = require("./ai/model");
+    const config = getAiConfig();
     res.json({
       ok: false,
-      provider: "ollama",
-      model: "qwen3:1.7b",
-      configured: true,
+      provider: config.provider,
+      model: config.model,
+      configured: Boolean(config.configured),
       available: false,
-      error: "OLLAMA_UNAVAILABLE"
+      error: config.provider === "gemini" ? "GEMINI_UNAVAILABLE" : "OLLAMA_UNAVAILABLE",
+      message: "AI service is currently unavailable."
     });
   }
 });
@@ -201,10 +204,12 @@ app.post("/api/ai/test", async (req, res) => {
     res.json(result);
   } catch (err) {
     logger.error("AI test endpoint error", { error: err.message });
+    const { getAiConfig } = require("./ai/model");
+    const config = getAiConfig();
     res.status(500).json({
       ok: false,
-      provider: "ollama",
-      model: "qwen3:1.7b",
+      provider: config.provider,
+      model: config.model,
       error: "AI_GENERATION_FAILED"
     });
   }
@@ -711,7 +716,12 @@ app.post("/api/workspace/:id/apply-rewrite", (req, res) => {
       });
     }
 
-    const { originalPassage, newText } = req.body || {};
+    let { originalPassage, newText } = req.body || {};
+    if ((!originalPassage || typeof newText !== "string") && ws.writing && Array.isArray(ws.writing.rewrites) && ws.writing.rewrites.length > 0) {
+      const latest = ws.writing.rewrites[ws.writing.rewrites.length - 1];
+      originalPassage = latest.originalPassage;
+      newText = latest.rewrittenText;
+    }
     const applyResult = applyRewrite(req.params.id, { originalPassage, newText });
     if (!applyResult.ok) {
       return res.status(400).json(applyResult);
@@ -909,6 +919,19 @@ app.post("/api/analyze", async (req, res) => {
       logger.debug("AI writing detection attachment skipped", { error: aiErr.message });
     }
 
+    if (result.geminiReview && (!result.matchedPassages || result.matchedPassages.length === 0 || !result.geminiReview.items || result.geminiReview.items.length === 0)) {
+      if (result.geminiReview.status === "SUCCESS" && result.geminiReview.message?.includes("No candidate matching passages")) {
+        result.geminiReview = {
+          status: "SKIPPED",
+          state: "NO_PASSAGES_TO_REVIEW",
+          available: false,
+          retryable: false,
+          message: "No passages met the criteria for AI evidence review.",
+          items: []
+        };
+      }
+    }
+
     res.json({
       success: true,
       ...result
@@ -940,16 +963,16 @@ app.post("/api/analysis/:id/retry-ai-review", async (req, res) => {
 
     if (passages.length === 0) {
       const reviewResult = {
-        status: "SUCCESS",
-        state: "COMPLETED",
-        available: true,
+        status: "SKIPPED",
+        state: "NO_PASSAGES_TO_REVIEW",
+        available: false,
         retryable: false,
-        message: "No candidate matching passages detected to review. Content appears independently written.",
+        message: "No passages met the criteria for AI evidence review.",
         items: []
       };
       analysis.aiReview = reviewResult;
       db.setSessionAnalysis(analysis);
-      return res.json({ success: true, aiReview: reviewResult });
+      return res.json({ success: true, aiReview: reviewResult, skipped: true });
     }
 
     const { reviewEvidenceWithAI } = require("./providers/aiReviewProvider");

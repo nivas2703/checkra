@@ -180,15 +180,16 @@ async function rewriteText(input = {}) {
 Mode: "${modeConfig.name}" (${modeConfig.guidance})
 
 MANDATORY FACTUAL & INTEGRITY INVARIANTS:
-1. Preserve exact factual meaning and original author intent.
-2. Preserve all numerical values, percentages, currencies, and statistics exactly as written.
-3. Preserve all named entities, organizations, and historical figures.
-4. Preserve all dates, quarters, and historical years.
-5. Preserve all citations, bracketed references (e.g., [1]), and author-year citations (e.g., (Smith, 2020)) exactly.
-6. NEVER invent or fabricate citations, authors, publications, DOIs, or URLs.
-7. Output ONLY the rewritten text. Do NOT add conversational pleasantries, explanations, or quotes.`;
+1. Provide a real, substantive rewrite that improves clarity, phrasing, vocabulary, and active flow in "${modeConfig.name}" style.
+2. Preserve exact factual meaning and original author intent.
+3. Preserve all numerical values, percentages, currencies, and statistics exactly as written.
+4. Preserve all named entities, organizations, and historical figures.
+5. Preserve all dates, quarters, and historical years.
+6. Preserve all citations, bracketed references (e.g., [1]), and author-year citations (e.g., (Smith, 2020)) exactly.
+7. NEVER invent or fabricate citations, authors, publications, DOIs, or URLs.
+8. Output ONLY the rewritten text. Do NOT add conversational pleasantries, quotes, or duplicate the unchanged input.`;
 
-  const prompt = `Rewrite the following text in ${modeConfig.name} style while strictly preserving all facts, numbers, dates, and citations:
+  const prompt = `Rewrite the following text in ${modeConfig.name} style to improve phrasing and sentence structure while strictly preserving all facts, numbers, dates, and citations:
 
 ${trimmed}`;
 
@@ -196,15 +197,25 @@ ${trimmed}`;
   const completion = await generateAiCompletion(prompt, {
     systemPrompt,
     temperature: 0.2,
-    timeoutMs: input.options?.timeoutMs || 45000
+    timeoutMs: input.options?.timeoutMs || 45000,
+    ...(input.options || {})
   });
 
   const rawOutput = completion?.response || completion?.content;
   if (!completion || !completion.ok || !rawOutput) {
+    const isUnavailable = !completion || (!completion.ok && (
+      completion.error === "OLLAMA_UNAVAILABLE" ||
+      completion.error === "OLLAMA_TIMEOUT" ||
+      completion.error === "AI_UNAVAILABLE" ||
+      (typeof completion.error === "string" && completion.error.startsWith("GEMINI_")) ||
+      completion.error === "UNSUPPORTED_PROVIDER"
+    ));
     return {
       ok: false,
-      error: completion?.error || "AI_GENERATION_FAILED",
-      message: "The AI assistant was unable to rewrite the text."
+      error: isUnavailable ? "AI_UNAVAILABLE" : (completion?.error || "AI_GENERATION_FAILED"),
+      message: isUnavailable
+        ? "Checkra AI rewrite is currently offline. The deterministic Checkra similarity analysis remains intact."
+        : "The AI assistant was unable to rewrite the text."
     };
   }
 

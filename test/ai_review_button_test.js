@@ -318,7 +318,7 @@ async function run() {
     assert.strictEqual(resExpired.json.error.code, "SESSION_EXPIRED");
     console.log("  ✓ [PASS] Backend returns HTTP 404 SESSION_EXPIRED for unknown/expired session ID");
 
-    // Test 3.2: Valid session with 0 candidate passages completes cleanly
+    // Test 3.2: Valid session with 0 candidate passages returns honest SKIPPED status (not false SUCCESS)
     const testSessionZero = {
       id: "VW-2026-TEST-ZERO-PASSAGES",
       matchedPassages: [],
@@ -330,10 +330,11 @@ async function run() {
     const resZero = await req("POST", `/api/analysis/${testSessionZero.id}/retry-ai-review`);
     assert.strictEqual(resZero.status, 200, "Clean passage session should return 200");
     assert.strictEqual(resZero.json.success, true);
-    assert.strictEqual(resZero.json.aiReview.status, "SUCCESS");
-    assert.strictEqual(resZero.json.aiReview.state, "COMPLETED");
-    assert.ok(resZero.json.aiReview.message.includes("No candidate matching passages"));
-    console.log("  ✓ [PASS] Backend returns completed AI review when zero passages require review");
+    assert.strictEqual(resZero.json.aiReview.status, "SKIPPED", "Zero passages must return status: SKIPPED");
+    assert.strictEqual(resZero.json.aiReview.state, "NO_PASSAGES_TO_REVIEW");
+    assert.strictEqual(resZero.json.aiReview.available, false);
+    assert.ok(resZero.json.aiReview.message.includes("No passages met the criteria"));
+    console.log("  ✓ [PASS] Backend returns honest SKIPPED AI review when zero passages require review");
 
     // Test 3.3: Score and matched passages preserved untouched
     const updatedSession = db.getSessionAnalysis(testSessionZero.id);

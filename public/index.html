@@ -2683,10 +2683,11 @@ const api = {
     });
     return parseApiResponse(res);
   },
-  async applyRewrite(id) {
+  async applyRewrite(id, payload = {}) {
     const res = await fetch("/api/workspace/" + id + "/apply-rewrite", {
       method: "POST",
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
     return parseApiResponse(res);
   },
@@ -3282,9 +3283,13 @@ function renderResults(analysis) {
   $("m-sources-matching").textContent = verifiedCount;
 
   const aiStatus = analysis.aiReview;
-  if (aiStatus && aiStatus.available) {
-    $("m-gemini").textContent = aiStatus.verdict || aiStatus.summary || aiStatus.message || "AI Evidence Review completed.";
-    if ($("m-gemini-header")) $("m-gemini-header").innerHTML = '<span>✨</span> AI Evidence Review completed';
+  if (aiStatus && (aiStatus.status === "SKIPPED" || aiStatus.state === "NO_PASSAGES_TO_REVIEW")) {
+    $("m-gemini").textContent = "AI Review Not Required — No candidate passages were identified.";
+    if ($("m-gemini-header")) $("m-gemini-header").innerHTML = '<span>ℹ️</span> AI Review Not Required';
+  } else if (aiStatus && aiStatus.available) {
+    const prov = aiStatus.provider ? (aiStatus.provider === "gemini" ? "Gemini " : "Ollama ") : "";
+    $("m-gemini").textContent = aiStatus.verdict || aiStatus.summary || aiStatus.message || (prov + "AI Evidence Review completed.");
+    if ($("m-gemini-header")) $("m-gemini-header").innerHTML = '<span>✨</span> ' + prov + 'AI Evidence Review completed';
   } else {
     $("m-gemini").textContent = (aiStatus && aiStatus.message) || "AI Evidence Review is temporarily unavailable. This does not affect the similarity score.";
     if ($("m-gemini-header")) $("m-gemini-header").innerHTML = '<span>✨</span> Core analysis completed';
@@ -3327,7 +3332,7 @@ async function retryAiReview() {
     btn.innerHTML = "<span>⏳</span> Reviewing...";
   }
   if (geminiEl) {
-    geminiEl.textContent = "Requesting Gemini AI Evidence Review...";
+    geminiEl.textContent = "Requesting AI Evidence Review...";
   }
   if (headerEl) {
     headerEl.innerHTML = "<span>⏳</span> AI Evidence Review in progress...";
@@ -3345,10 +3350,21 @@ async function retryAiReview() {
       return;
     }
 
-    // 2. Check for successful AI review
+    // 2. Check if no passages required review (honest skipped state)
+    if (result && result.aiReview && (result.aiReview.status === "SKIPPED" || result.aiReview.state === "NO_PASSAGES_TO_REVIEW")) {
+      const skipMsg = "AI Review Not Required — No candidate passages were identified.";
+      if (state.currentAnalysis) {
+        state.currentAnalysis.aiReview = result.aiReview;
+      }
+      if (geminiEl) geminiEl.textContent = skipMsg;
+      if (headerEl) headerEl.innerHTML = "<span>ℹ️</span> AI Review Not Required";
+      return;
+    }
+
+    // 3. Check for genuine successful AI review
     const isSuccess = result && (result.success === true || (result.aiReview && (result.aiReview.status === "SUCCESS" || result.aiReview.status === "completed")));
 
-    if (isSuccess && result.aiReview) {
+    if (isSuccess && result.aiReview && result.aiReview.status !== "SKIPPED") {
       if (state.currentAnalysis) {
         state.currentAnalysis.aiReview = result.aiReview;
       }
@@ -3356,15 +3372,16 @@ async function retryAiReview() {
         state.currentWorkspace.analysis.aiReview = result.aiReview;
       }
 
-      const reviewText = result.aiReview.summary || result.aiReview.verdict || result.aiReview.message || "AI Evidence Review completed successfully.";
+      const prov = result.aiReview.provider ? (result.aiReview.provider === "gemini" ? "Gemini " : "Ollama ") : "";
+      const reviewText = result.aiReview.summary || result.aiReview.verdict || result.aiReview.message || (prov + "AI Evidence Review completed.");
       if (geminiEl) {
         geminiEl.textContent = reviewText;
       }
       if (headerEl) {
-        headerEl.innerHTML = "<span>✨</span> AI Evidence Review completed";
+        headerEl.innerHTML = "<span>✨</span> " + prov + "AI Evidence Review completed";
       }
     } else {
-      // 3. Clear failure without fabricating results or reporting false success
+      // 4. Clear failure without fabricating results or reporting false success
       const errorMsg = (result && result.error && result.error.message) ||
                        (result && result.aiReview && result.aiReview.message) ||
                        "AI Evidence Review is temporarily unavailable.";
@@ -3740,8 +3757,14 @@ async function runRewrite() {
       result = await api.rewrite({ text, mode: state.currentRewriteMode || "clear-natural" });
     }
 
-    const rewritten = (result && (result.stagedRewrite ? result.stagedRewrite.rewrittenText : result.rewrittenText)) || "";
-    if (!rewritten) throw new Error("No rewrite returned");
+    const rewritten = (result && (
+      (result.stagedRewrite && result.stagedRewrite.rewrittenText) ||
+      (result.rewrite && result.rewrite.rewrittenText) ||
+      result.rewrittenText
+    )) || "";
+    if (!rewritten) {
+      throw new Error((result && result.message) || (result && result.error && result.error.message) || "No rewrite returned by the AI provider.");
+    }
 
     state.stagedRewriteData = {
       originalText: text,
@@ -3767,7 +3790,8 @@ async function runRewrite() {
     $("rewrite-review-modal").style.display = "flex";
 
   } catch (err) {
-    alert("Rewrite unavailable: " + err.message);
+    alert("AI rewriting is currently unavailable. Your original document has not been changed.");
+    console.error("Rewrite notice:", err.message);
   } finally {
     $("btn-run-rewrite").disabled = false;
     $("btn-run-rewrite").innerHTML = "<span>✨</span> Generate Staged Rewrite";
@@ -3798,7 +3822,7 @@ async function applyStagedRewriteUi() {
 
   if (state.activeWorkspaceId) {
     try {
-      await api.applyRewrite(state.activeWorkspaceId);
+      await api.applyRewrite(state.activeWorkspaceId, { originalPassage: orig, newText: imp });
     } catch (e) {
       console.warn("Backend applyRewrite notice:", e.message);
     }

@@ -20,7 +20,11 @@ function getGeminiClient() {
 }
 
 function getGeminiModel() {
-  return process.env.GEMINI_MODEL || "gemini-3.5-flash";
+  const envModel = process.env.GEMINI_MODEL;
+  if (envModel && envModel !== "gemini-3.5-flash") {
+    return envModel;
+  }
+  return "gemini-2.5-flash";
 }
 
 function isGeminiConfigured() {
@@ -44,14 +48,14 @@ async function testGeminiConnection() {
     });
     return { ok: true, model: modelName, text: (res.text || "").trim() };
   } catch (err) {
-    // If model is not found, try gemini-3.5-flash-lite
+    // If model is not found, try gemini-1.5-flash
     if (err.message && (err.message.includes("404") || err.message.includes("NOT_FOUND"))) {
       try {
         const fallbackRes = await ai.models.generateContent({
-          model: "gemini-3.5-flash-lite",
+          model: "gemini-1.5-flash",
           contents: "Respond with the single word: OK"
         });
-        return { ok: true, model: "gemini-3.5-flash-lite (fallback)", text: (fallbackRes.text || "").trim() };
+        return { ok: true, model: "gemini-1.5-flash (fallback)", text: (fallbackRes.text || "").trim() };
       } catch (fallbackErr) {
         return { ok: false, error: fallbackErr.message };
       }
@@ -202,11 +206,11 @@ async function reviewEvidenceWithGemini(evidenceItems = [], options = {}) {
 
   if (!evidenceItems.length) {
     return {
-      status: "SUCCESS",
-      state: "COMPLETED",
-      available: true,
+      status: "SKIPPED",
+      state: "NO_PASSAGES_TO_REVIEW",
+      available: false,
       retryable: false,
-      message: "No significant matched passages required AI review. Content appears independently written.",
+      message: "No passages met the criteria for AI evidence review.",
       items: []
     };
   }
