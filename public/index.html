@@ -1952,7 +1952,7 @@ body {
             </div>
 
             <div class="ai-status-card">
-              <div class="ai-status-header">
+              <div class="ai-status-header" id="m-gemini-header">
                 <span>✨</span> Core analysis completed
               </div>
               <div id="m-gemini" class="ai-status-sub">
@@ -1968,7 +1968,7 @@ body {
                 <button class="btn-report-subtle" onclick="switchTab('tab-passages')">
                   <span>🔍</span> Inspect Passages
                 </button>
-                <button class="btn-report-subtle" onclick="retryAiReview()">
+                <button id="btn-run-ai-review" class="btn-report-subtle" onclick="retryAiReview()">
                   <span>✨</span> Run AI Review
                 </button>
               </div>
@@ -2717,6 +2717,13 @@ const api = {
       body: JSON.stringify(payload)
     });
     return parseApiResponse(res);
+  },
+  async retryAiReview(id) {
+    const res = await fetch("/api/analysis/" + encodeURIComponent(id) + "/retry-ai-review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    return parseApiResponse(res);
   }
 };
 
@@ -2733,6 +2740,7 @@ const state = {
   isAnalyzing: false,
   isExtracting: false,
   isAssistantOpen: false,
+  isReviewingAi: false,
   status: "idle",
   startTime: 0,
   timerInterval: null
@@ -2745,6 +2753,7 @@ function transitionTo(nextStatus, payload = {}) {
     case "idle":
       state.isExtracting = false;
       state.isAnalyzing = false;
+      state.isReviewingAi = false;
       stopTimer();
       setExtractionLoading(false);
       $("quick-score-card").style.display = "none";
@@ -2809,6 +2818,7 @@ function transitionTo(nextStatus, payload = {}) {
     case "error":
       state.isExtracting = false;
       state.isAnalyzing = false;
+      state.isReviewingAi = false;
       stopTimer();
       setExtractionLoading(false);
       const radarImgErr = $("radar-center-img");
@@ -3273,9 +3283,11 @@ function renderResults(analysis) {
 
   const aiStatus = analysis.aiReview;
   if (aiStatus && aiStatus.available) {
-    $("m-gemini").textContent = aiStatus.verdict || "AI Evidence Review completed.";
+    $("m-gemini").textContent = aiStatus.verdict || aiStatus.summary || aiStatus.message || "AI Evidence Review completed.";
+    if ($("m-gemini-header")) $("m-gemini-header").innerHTML = '<span>✨</span> AI Evidence Review completed';
   } else {
-    $("m-gemini").textContent = "AI Evidence Review is temporarily unavailable. This does not affect the similarity score.";
+    $("m-gemini").textContent = (aiStatus && aiStatus.message) || "AI Evidence Review is temporarily unavailable. This does not affect the similarity score.";
+    if ($("m-gemini-header")) $("m-gemini-header").innerHTML = '<span>✨</span> Core analysis completed';
   }
 
   $("quick-score-card").style.display = "block";
@@ -3289,6 +3301,104 @@ function renderResults(analysis) {
   if (state.currentWorkspace) {
     renderResearchTab(state.currentWorkspace);
     renderCitationsTab(state.currentWorkspace);
+  }
+}
+
+// RETRY / RUN AI EVIDENCE REVIEW
+async function retryAiReview() {
+  if (state.isReviewingAi) return;
+
+  const analysisId = (state.currentAnalysis && (state.currentAnalysis.analysisId || state.currentAnalysis.id)) || null;
+  const geminiEl = $("m-gemini");
+  const headerEl = $("m-gemini-header") || document.querySelector(".ai-status-header");
+  const btn = $("btn-run-ai-review") || document.querySelector("button[onclick*='retryAiReview']");
+
+  if (!analysisId) {
+    const expiredMsg = "Analysis session expired. Please run Check Document again.";
+    if (geminiEl) geminiEl.textContent = expiredMsg;
+    if (headerEl) headerEl.innerHTML = "<span>⚠️</span> Session Expired";
+    alert(expiredMsg);
+    return;
+  }
+
+  state.isReviewingAi = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "<span>⏳</span> Reviewing...";
+  }
+  if (geminiEl) {
+    geminiEl.textContent = "Requesting Gemini AI Evidence Review...";
+  }
+  if (headerEl) {
+    headerEl.innerHTML = "<span>⏳</span> AI Evidence Review in progress...";
+  }
+
+  try {
+    const result = await api.retryAiReview(analysisId);
+
+    // 1. Check if backend reported session expired
+    if (result && result.error && result.error.code === "SESSION_EXPIRED") {
+      const expiredMsg = "Analysis session expired. Please run Check Document again.";
+      if (geminiEl) geminiEl.textContent = expiredMsg;
+      if (headerEl) headerEl.innerHTML = "<span>⚠️</span> Session Expired";
+      alert(expiredMsg);
+      return;
+    }
+
+    // 2. Check for successful AI review
+    const isSuccess = result && (result.success === true || (result.aiReview && (result.aiReview.status === "SUCCESS" || result.aiReview.status === "completed")));
+
+    if (isSuccess && result.aiReview) {
+      if (state.currentAnalysis) {
+        state.currentAnalysis.aiReview = result.aiReview;
+      }
+      if (state.currentWorkspace && state.currentWorkspace.analysis) {
+        state.currentWorkspace.analysis.aiReview = result.aiReview;
+      }
+
+      const reviewText = result.aiReview.summary || result.aiReview.verdict || result.aiReview.message || "AI Evidence Review completed successfully.";
+      if (geminiEl) {
+        geminiEl.textContent = reviewText;
+      }
+      if (headerEl) {
+        headerEl.innerHTML = "<span>✨</span> AI Evidence Review completed";
+      }
+    } else {
+      // 3. Clear failure without fabricating results or reporting false success
+      const errorMsg = (result && result.error && result.error.message) ||
+                       (result && result.aiReview && result.aiReview.message) ||
+                       "AI Evidence Review is temporarily unavailable.";
+
+      if (result && result.aiReview && state.currentAnalysis) {
+        state.currentAnalysis.aiReview = result.aiReview;
+      }
+      if (geminiEl) {
+        geminiEl.textContent = errorMsg;
+      }
+      if (headerEl) {
+        headerEl.innerHTML = "<span>⚠️</span> AI Evidence Review notice";
+      }
+      alert("AI Evidence Review notice: " + errorMsg);
+    }
+  } catch (err) {
+    const isExpired = err.message && (err.message.includes("SESSION_EXPIRED") || err.message.includes("session expired"));
+    const errorMsg = isExpired
+      ? "Analysis session expired. Please run Check Document again."
+      : (err.message || "Failed to communicate with AI review service.");
+
+    if (geminiEl) {
+      geminiEl.textContent = errorMsg;
+    }
+    if (headerEl) {
+      headerEl.innerHTML = "<span>⚠️</span> " + (isExpired ? "Session Expired" : "AI Review Notice");
+    }
+    alert(errorMsg);
+  } finally {
+    state.isReviewingAi = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = "<span>✨</span> Run AI Review";
+    }
   }
 }
 
