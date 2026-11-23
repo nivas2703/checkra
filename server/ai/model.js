@@ -161,7 +161,7 @@ async function checkAiHealth(overrideConfig = {}) {
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+      const ai = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
       const res = await Promise.race([
         ai.models.generateContent({
           model,
@@ -205,7 +205,7 @@ async function checkAiHealth(overrideConfig = {}) {
         let fallbackErrMessage = null;
         if (model !== FALLBACK_GEMINI_MODEL) {
           try {
-            const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim() });
+            const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
             const fbRes = await Promise.race([
               aiFallback.models.generateContent({
                 model: FALLBACK_GEMINI_MODEL,
@@ -386,7 +386,7 @@ async function generateAiCompletion(prompt, options = {}) {
       };
     }
 
-    const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+    const ai = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
     const fullPrompt = options.systemPrompt
       ? `${options.systemPrompt}\n\n${prompt.trim()}`
       : prompt.trim();
@@ -434,6 +434,28 @@ async function generateAiCompletion(prompt, options = {}) {
         error = "GEMINI_PERMISSION_DENIED";
         userMessage = "Gemini API key lacks required permissions.";
       } else if (msg.includes("404") || msg.includes("not_found")) {
+        if (model !== FALLBACK_GEMINI_MODEL) {
+          try {
+            const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
+            const fbReq = { ...generateReq, model: FALLBACK_GEMINI_MODEL };
+            const fbRes = await Promise.race([
+              aiFallback.models.generateContent(fbReq),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs))
+            ]);
+            const fbText = typeof fbRes?.text === "string" ? fbRes.text.trim() : "";
+            if (fbText) {
+              return {
+                ok: true,
+                provider: "gemini",
+                model: FALLBACK_GEMINI_MODEL,
+                response: fbText,
+                fallback: true
+              };
+            }
+          } catch (fbErr) {
+            // retain primary error
+          }
+        }
         error = "GEMINI_MODEL_NOT_FOUND";
         userMessage = `Configured Gemini model '${model}' was not found.`;
       } else if (msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota")) {

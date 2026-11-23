@@ -16,7 +16,7 @@ function getGeminiClient() {
   if (!apiKey || !apiKey.trim()) {
     return null;
   }
-  return new GoogleGenAI({ apiKey: apiKey.trim() });
+  return new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
 }
 
 function getGeminiModel() {
