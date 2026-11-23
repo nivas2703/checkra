@@ -299,6 +299,47 @@ Respond ONLY with valid JSON in this exact structure:
       };
     } catch (err) {
       lastError = err;
+      const msg = (err.message || "").toLowerCase();
+      if (msg.includes("404") || msg.includes("not_found") || msg.includes("no longer available")) {
+        const fallbacks = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest", "gemini-1.5-flash"].filter(f => f !== modelName);
+        for (const fbModel of fallbacks) {
+          try {
+            const fbRes = await Promise.race([
+              ai.models.generateContent({
+                model: fbModel,
+                contents: prompt,
+                config: {
+                  responseMimeType: "application/json",
+                  temperature: 0.1
+                }
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs))
+            ]);
+            const fbText = fbRes.text || "{}";
+            let parsed;
+            try {
+              parsed = JSON.parse(fbText);
+            } catch (e) {
+              const clean = fbText.replace(/```(?:json)?/gi, "").trim();
+              parsed = JSON.parse(clean);
+            }
+            logger.info(`Gemini AI evidence review succeeded using fallback model ${fbModel}`);
+            return {
+              status: "SUCCESS",
+              state: "COMPLETED",
+              available: true,
+              retryable: false,
+              model: fbModel,
+              summary: parsed.summary || "Gemini evidence review completed.",
+              items: parsed.items || [],
+              fallback: true
+            };
+          } catch (fbErr) {
+            // try next available fallback
+          }
+        }
+      }
+
       const errorInfo = classifyGeminiError(err);
 
       // Log detailed error on server only — never expose raw JSON to user
