@@ -202,6 +202,7 @@ async function checkAiHealth(overrideConfig = {}) {
         userMessage = "Gemini API key lacks required permissions.";
       } else if (msg.includes("404") || msg.includes("not_found")) {
         // Fallback test
+        let fallbackErrMessage = null;
         if (model !== FALLBACK_GEMINI_MODEL) {
           try {
             const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim() });
@@ -223,11 +224,14 @@ async function checkAiHealth(overrideConfig = {}) {
               };
             }
           } catch (fbErr) {
-            // keep primary model error
+            fallbackErrMessage = fbErr.message;
           }
         }
         error = "GEMINI_MODEL_NOT_FOUND";
         userMessage = `Configured Gemini model '${model}' was not found.`;
+        if (fallbackErrMessage) {
+          userMessage += ` (Fallback '${FALLBACK_GEMINI_MODEL}' error: ${fallbackErrMessage})`;
+        }
       } else if (msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota")) {
         error = "GEMINI_QUOTA_EXCEEDED";
         userMessage = "Gemini quota or rate limit exceeded.";
