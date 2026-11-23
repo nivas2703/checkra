@@ -49,7 +49,7 @@ async function testGeminiConnection() {
     return { ok: true, model: modelName, text: (res.text || "").trim() };
   } catch (err) {
     if (err.message && (err.message.includes("404") || err.message.includes("NOT_FOUND") || err.message.includes("no longer available"))) {
-      const candidates = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-1.5-flash"].filter(m => m !== modelName);
+      const candidates = ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest"].filter(m => m !== modelName);
       for (const cand of candidates) {
         try {
           const fallbackRes = await ai.models.generateContent({
@@ -301,7 +301,7 @@ Respond ONLY with valid JSON in this exact structure:
       lastError = err;
       const msg = (err.message || "").toLowerCase();
       if (msg.includes("404") || msg.includes("not_found") || msg.includes("no longer available")) {
-        const fallbacks = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest", "gemini-1.5-flash"].filter(f => f !== modelName);
+        const fallbacks = ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest"].filter(f => f !== modelName);
         for (const fbModel of fallbacks) {
           try {
             const fbRes = await Promise.race([
