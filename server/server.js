@@ -931,9 +931,10 @@ app.post("/api/analyze", async (req, res) => {
       logger.debug("AI writing detection attachment skipped", { error: aiErr.message });
     }
 
-    if (result.geminiReview && (!result.matchedPassages || result.matchedPassages.length === 0 || !result.geminiReview.items || result.geminiReview.items.length === 0)) {
-      if (result.geminiReview.status === "SUCCESS" && result.geminiReview.message?.includes("No candidate matching passages")) {
-        result.geminiReview = {
+    const reviewObj = result.aiReview || result.geminiReview;
+    if (reviewObj && (!result.matchedPassages || result.matchedPassages.length === 0 || !reviewObj.items || reviewObj.items.length === 0)) {
+      if (reviewObj.status === "SUCCESS" && reviewObj.message?.includes("No candidate matching passages")) {
+        const skippedObj = {
           status: "SKIPPED",
           state: "NO_PASSAGES_TO_REVIEW",
           available: false,
@@ -941,6 +942,14 @@ app.post("/api/analyze", async (req, res) => {
           message: "No passages met the criteria for AI evidence review.",
           items: []
         };
+        result.aiReview = skippedObj;
+        result.geminiReview = skippedObj;
+        const sessionRecord = db.getSessionAnalysis(result.id);
+        if (sessionRecord) {
+          sessionRecord.aiReview = skippedObj;
+          sessionRecord.geminiReview = skippedObj;
+          db.setSessionAnalysis(sessionRecord);
+        }
       }
     }
 
