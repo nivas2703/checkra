@@ -48,16 +48,18 @@ async function testGeminiConnection() {
     });
     return { ok: true, model: modelName, text: (res.text || "").trim() };
   } catch (err) {
-    // If model is not found, try gemini-1.5-flash
-    if (err.message && (err.message.includes("404") || err.message.includes("NOT_FOUND"))) {
-      try {
-        const fallbackRes = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
-          contents: "Respond with the single word: OK"
-        });
-        return { ok: true, model: "gemini-1.5-flash (fallback)", text: (fallbackRes.text || "").trim() };
-      } catch (fallbackErr) {
-        return { ok: false, error: fallbackErr.message };
+    if (err.message && (err.message.includes("404") || err.message.includes("NOT_FOUND") || err.message.includes("no longer available"))) {
+      const candidates = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-1.5-flash"].filter(m => m !== modelName);
+      for (const cand of candidates) {
+        try {
+          const fallbackRes = await ai.models.generateContent({
+            model: cand,
+            contents: "Respond with the single word: OK"
+          });
+          return { ok: true, model: `${cand} (fallback)`, text: (fallbackRes.text || "").trim() };
+        } catch (fallbackErr) {
+          // try next
+        }
       }
     }
     return { ok: false, error: err.message };

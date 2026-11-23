@@ -18,7 +18,7 @@ const { GoogleGenAI } = require("@google/genai");
 const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "qwen3:1.7b";
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
-const FALLBACK_GEMINI_MODEL = "gemini-1.5-flash";
+const FALLBACK_GEMINI_MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-1.5-flash"];
 const DEFAULT_TIMEOUT_MS = 60000; // 60s timeout for local CPU generation / remote APIs
 
 function getAiConfig() {
@@ -200,32 +200,36 @@ async function checkAiHealth(overrideConfig = {}) {
       } else if (msg.includes("403") || msg.includes("permission_denied")) {
         error = "GEMINI_PERMISSION_DENIED";
         userMessage = "Gemini API key lacks required permissions.";
-      } else if (msg.includes("404") || msg.includes("not_found")) {
-        let availableModelNames = [];
-        try {
-          const listClient = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
-          const listRes = await listClient.models.list();
-          if (Array.isArray(listRes)) {
-            availableModelNames = listRes.map(m => m.name || m.model || m.displayName);
-          } else if (listRes && typeof listRes === "object") {
-            const arr = listRes.models || listRes.page || [];
-            availableModelNames = arr.map(m => m.name || m.model || m.displayName);
+      } else if (msg.includes("404") || msg.includes("not_found") || msg.includes("no longer available")) {
+        const fallbacks = FALLBACK_GEMINI_MODELS.filter(f => f !== model);
+        for (const fbModel of fallbacks) {
+          try {
+            const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
+            const fbRes = await Promise.race([
+              aiFallback.models.generateContent({
+                model: fbModel,
+                contents: "Respond with the single word: OK"
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 6000))
+            ]);
+            const fbText = (fbRes && typeof fbRes.text === "string" ? fbRes.text.trim() : "");
+            if (fbText) {
+              return {
+                ok: true,
+                provider: "gemini",
+                model: fbModel,
+                configured: true,
+                available: true,
+                fallback: true,
+                requestedModel: model
+              };
+            }
+          } catch (fbErr) {
+            // try next available fallback
           }
-        } catch (listErr) {
-          // ignore
         }
         error = "GEMINI_MODEL_NOT_FOUND";
         userMessage = `Gemini call failed: ${err.message}`;
-        return {
-          ok: false,
-          provider: "gemini",
-          model,
-          configured: true,
-          available: false,
-          error,
-          message: userMessage,
-          availableModels: availableModelNames
-        };
       } else if (msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota")) {
         error = "GEMINI_QUOTA_EXCEEDED";
         userMessage = "Gemini quota or rate limit exceeded.";
@@ -427,11 +431,12 @@ async function generateAiCompletion(prompt, options = {}) {
       } else if (msg.includes("403") || msg.includes("permission_denied")) {
         error = "GEMINI_PERMISSION_DENIED";
         userMessage = "Gemini API key lacks required permissions.";
-      } else if (msg.includes("404") || msg.includes("not_found")) {
-        if (model !== FALLBACK_GEMINI_MODEL) {
+      } else if (msg.includes("404") || msg.includes("not_found") || msg.includes("no longer available")) {
+        const fallbacks = FALLBACK_GEMINI_MODELS.filter(f => f !== model);
+        for (const fbModel of fallbacks) {
           try {
             const aiFallback = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: "v1beta" });
-            const fbReq = { ...generateReq, model: FALLBACK_GEMINI_MODEL };
+            const fbReq = { ...generateReq, model: fbModel };
             const fbRes = await Promise.race([
               aiFallback.models.generateContent(fbReq),
               new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs))
@@ -441,13 +446,14 @@ async function generateAiCompletion(prompt, options = {}) {
               return {
                 ok: true,
                 provider: "gemini",
-                model: FALLBACK_GEMINI_MODEL,
+                model: fbModel,
                 response: fbText,
-                fallback: true
+                fallback: true,
+                requestedModel: model
               };
             }
           } catch (fbErr) {
-            // retain primary error
+            // try next available fallback
           }
         }
         error = "GEMINI_MODEL_NOT_FOUND";
