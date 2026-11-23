@@ -17,7 +17,7 @@
  * - Provider-agnostic: uses server/ai/model.js with graceful degradation.
  */
 
-const { generateAiCompletion, checkAiHealth } = require("./model");
+const { generateAiCompletion, checkAiHealth, getAiConfig } = require("./model");
 const logger = require("../utils/logger");
 
 const REWRITE_MODES = {
@@ -165,14 +165,25 @@ async function rewriteText(input = {}) {
   const originalCitations = extractCitations(trimmed);
   const originalDates = extractDates(trimmed);
 
-  // 3. Provider Availability Check
-  const health = await checkAiHealth(input.options);
-  if (!health.ok || !health.available) {
-    return {
-      ok: false,
-      error: "AI_UNAVAILABLE",
-      message: "Checkra AI rewrite is currently offline. The deterministic Checkra similarity analysis remains intact."
-    };
+  // 3. Fast Provider Availability Guard
+  const aiConfig = getAiConfig();
+  if (aiConfig.provider === "ollama") {
+    const health = await checkAiHealth(input.options);
+    if (!health.ok || !health.available) {
+      return {
+        ok: false,
+        error: "AI_UNAVAILABLE",
+        message: "Checkra AI rewrite is currently offline. The deterministic Checkra similarity analysis remains intact."
+      };
+    }
+  } else if (aiConfig.provider === "gemini") {
+    if (!aiConfig.configured) {
+      return {
+        ok: false,
+        error: "AI_UNAVAILABLE",
+        message: "Checkra AI rewrite is currently offline. The deterministic Checkra similarity analysis remains intact."
+      };
+    }
   }
 
   // 4. Construct Bounded & Constrained Prompt
