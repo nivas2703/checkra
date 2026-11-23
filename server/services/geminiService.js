@@ -300,7 +300,7 @@ Respond ONLY with valid JSON in this exact structure:
     } catch (err) {
       lastError = err;
       const msg = (err.message || "").toLowerCase();
-      if (msg.includes("404") || msg.includes("not_found") || msg.includes("no longer available")) {
+      if (msg.includes("404") || msg.includes("not_found") || msg.includes("no longer available") || msg.includes("429") || msg.includes("quota") || msg.includes("resource_exhausted") || msg.includes("503") || msg.includes("unavailable")) {
         const fallbacks = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest"].filter(f => f !== modelName);
         for (const fbModel of fallbacks) {
           try {
