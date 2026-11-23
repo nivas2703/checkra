@@ -589,20 +589,32 @@ app.post("/api/workspace/sync", (req, res) => {
   }
 });
 
+function resolveWorkspace(req) {
+  const id = req.params.id;
+  let ws = getWorkspace(id);
+  if (!ws && req.headers && req.headers["x-checkra-workspace-sync"]) {
+    try {
+      const rawSync = Buffer.from(req.headers["x-checkra-workspace-sync"], "base64").toString("utf8");
+      const parsed = JSON.parse(rawSync);
+      if (parsed && parsed.id === id) {
+        syncWorkspace(parsed);
+        ws = getWorkspace(id);
+      }
+    } catch (_) {}
+  }
+  if (!ws && req.body && req.body.workspace && req.body.workspace.id === id) {
+    try {
+      syncWorkspace(req.body.workspace);
+      ws = getWorkspace(id);
+    } catch (_) {}
+  }
+  return ws;
+}
+
 // GET /api/workspace/:id — Retrieves current workspace state
 app.get("/api/workspace/:id", (req, res) => {
   try {
-    let ws = getWorkspace(req.params.id);
-    if (!ws && req.headers["x-checkra-workspace-sync"]) {
-      try {
-        const rawSync = Buffer.from(req.headers["x-checkra-workspace-sync"], "base64").toString("utf8");
-        const parsed = JSON.parse(rawSync);
-        if (parsed && parsed.id === req.params.id) {
-          syncWorkspace(parsed);
-          ws = getWorkspace(req.params.id);
-        }
-      } catch (_) {}
-    }
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -624,7 +636,7 @@ app.get("/api/workspace/:id", (req, res) => {
 // POST /api/workspace/:id/analyze — Executes staged multi-level analysis on active workspace
 app.post("/api/workspace/:id/analyze", async (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -651,7 +663,7 @@ app.post("/api/workspace/:id/analyze", async (req, res) => {
 // POST /api/workspace/:id/passage-context — Retrieves all diagnostic context for a selected passage
 app.post("/api/workspace/:id/passage-context", (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -679,7 +691,7 @@ app.post("/api/workspace/:id/passage-context", (req, res) => {
 // POST /api/workspace/:id/rewrite — Stages an evidence-aware rewrite for a selected passage
 app.post("/api/workspace/:id/rewrite", async (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -707,7 +719,7 @@ app.post("/api/workspace/:id/rewrite", async (req, res) => {
 // POST /api/workspace/:id/apply-rewrite — Explicitly replaces passage in working document and versions it
 app.post("/api/workspace/:id/apply-rewrite", (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -740,7 +752,7 @@ app.post("/api/workspace/:id/apply-rewrite", (req, res) => {
 // POST /api/workspace/:id/recheck — Re-runs analysis on updated version and produces change impact
 app.post("/api/workspace/:id/recheck", async (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -767,7 +779,7 @@ app.post("/api/workspace/:id/recheck", async (req, res) => {
 // GET /api/workspace/:id/reports — Retrieves the 5 workspace reports
 app.get("/api/workspace/:id/reports", (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,
@@ -791,7 +803,7 @@ app.get("/api/workspace/:id/reports", (req, res) => {
 // GET /api/workspace/:id/export — Exports document and findings in JSON, Markdown, or HTML
 app.get("/api/workspace/:id/export", (req, res) => {
   try {
-    const ws = getWorkspace(req.params.id);
+    const ws = resolveWorkspace(req);
     if (!ws) {
       return res.status(404).json({
         ok: false,

@@ -2676,26 +2676,38 @@ const api = {
     return parseApiResponse(res);
   },
   async stageRewrite(id, payload) {
+    const body = { ...(payload || {}) };
+    if (!body.workspace && state && state.currentWorkspace && state.currentWorkspace.id === id) {
+      body.workspace = state.currentWorkspace;
+    }
     const res = await fetch("/api/workspace/" + id + "/rewrite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(body)
     });
     return parseApiResponse(res);
   },
   async applyRewrite(id, payload = {}) {
+    const body = { ...(payload || {}) };
+    if (!body.workspace && state && state.currentWorkspace && state.currentWorkspace.id === id) {
+      body.workspace = state.currentWorkspace;
+    }
     const res = await fetch("/api/workspace/" + id + "/apply-rewrite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(body)
     });
     return parseApiResponse(res);
   },
   async recheckWorkspace(id, options = {}) {
+    const body = { ...(options || {}) };
+    if (!body.workspace && state && state.currentWorkspace && state.currentWorkspace.id === id) {
+      body.workspace = state.currentWorkspace;
+    }
     const res = await fetch("/api/workspace/" + id + "/recheck", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(options)
+      body: JSON.stringify(body)
     });
     return parseApiResponse(res);
   },
