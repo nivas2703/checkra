@@ -215,7 +215,7 @@ async function checkAiHealth(overrideConfig = {}) {
           // ignore
         }
         error = "GEMINI_MODEL_NOT_FOUND";
-        userMessage = `Configured Gemini model '${model}' was not found.`;
+        userMessage = `Gemini call failed: ${err.message}`;
         return {
           ok: false,
           provider: "gemini",
@@ -451,7 +451,7 @@ async function generateAiCompletion(prompt, options = {}) {
           }
         }
         error = "GEMINI_MODEL_NOT_FOUND";
-        userMessage = `Configured Gemini model '${model}' was not found.`;
+        userMessage = `Gemini call failed: ${err.message}`;
       } else if (msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota")) {
         error = "GEMINI_QUOTA_EXCEEDED";
         userMessage = "Gemini quota or rate limit exceeded.";
