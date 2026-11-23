@@ -224,6 +224,8 @@ ${trimmed}`;
     return {
       ok: false,
       error: isUnavailable ? "AI_UNAVAILABLE" : (completion?.error || "AI_GENERATION_FAILED"),
+      providerError: completion?.error,
+      providerMessage: completion?.message,
       message: isUnavailable
         ? "Checkra AI rewrite is currently offline. The deterministic Checkra similarity analysis remains intact."
         : "The AI assistant was unable to rewrite the text."
