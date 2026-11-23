@@ -256,7 +256,7 @@ Respond ONLY with valid JSON in this exact structure:
 
   logger.logEvent("gemini_evidence_review_started", { count: evidenceItems.length, model: modelName });
 
-  const timeoutMs = options.timeoutMs || 4000;
+  const timeoutMs = options.timeoutMs || 25000;
   const maxAttempts = options.maxAttempts || 2;
   const backoffDelays = [800, 1500];
   let lastError = null;
@@ -335,7 +335,7 @@ Respond ONLY with valid JSON in this exact structure:
               fallback: true
             };
           } catch (fbErr) {
-            // try next available fallback
+            logger.warn(`Fallback model ${fbModel} review error: ${fbErr.message}`);
           }
         }
       }
